@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#eef7f8] text-ink-900 antialiased;
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-sm
+      placeholder:text-slate-400
+      focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500
+      transition;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+      bg-gradient-to-r from-brand-700 to-cyan-500 hover:from-brand-800 hover:to-cyan-600
+      text-white font-semibold rounded-lg transition shadow-glow
+      disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+      bg-white/90 hover:bg-white text-ink-700 font-medium rounded-lg
+      border border-slate-200/80 transition shadow-sm disabled:opacity-50;
+  }
+
+  .card {
+    @apply bg-white/95 rounded-lg border border-white/80 shadow-card;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-700 via-cyan-500 to-coral-500 bg-clip-text text-transparent;
+  }
+
+  .hero-gradient {
+    background: radial-gradient(
+        ellipse 80% 50% at 50% -20%,
+        rgba(139, 92, 246, 0.15),
+        transparent
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 80% 60%,
+        rgba(236, 72, 153, 0.08),
+        transparent
+      );
+  }
+}

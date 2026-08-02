@@ -1,0 +1,109 @@
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  Activity,
+  Zap,
+  Users,
+  Settings,
+  MessageCircle,
+  ChevronDown,
+  LogOut,
+  Plus,
+} from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import { useInstagram } from "../../hooks/useInstagram";
+
+const NAV_ITEMS = [
+  { to: "/dashboard", icon: Activity, label: "Dashboard" },
+  { to: "/automation", icon: Zap, label: "Automations" },
+  { to: "/dashboard", icon: Users, label: "Analytics", disabled: true },
+  { to: "/dashboard", icon: Settings, label: "Settings", disabled: true },
+];
+
+export default function Sidebar() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+  const { ig } = useInstagram(user?.email);
+
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 w-64 bg-ink-900 text-white flex flex-col shrink-0 shadow-2xl">
+      <div className="p-5 border-b border-white/10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-gradient-to-br from-brand-400 to-coral-500 rounded-lg flex items-center justify-center shadow-glow">
+            <MessageCircle className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-lg font-bold tracking-tight">JustDMs</span>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <button
+          onClick={() => navigate("/automation")}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 transition hover:bg-brand-50"
+        >
+          <Plus className="w-4 h-4" />
+          Create Automation
+        </button>
+      </div>
+
+      <nav className="flex-1 px-3 space-y-0.5">
+        {NAV_ITEMS.map(({ to, icon: Icon, label, disabled }) =>
+          disabled ? (
+            <div
+              key={label}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/35 cursor-not-allowed"
+            >
+              <Icon className="w-[18px] h-[18px]" />
+              {label}
+              <span className="ml-auto text-[10px] uppercase tracking-wide bg-white/10 text-white/45 px-1.5 py-0.5 rounded">
+                Soon
+              </span>
+            </div>
+          ) : (
+            <NavLink
+              key={to + label}
+              to={to}
+              end={to === "/dashboard"}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
+                  isActive
+                    ? "bg-white text-ink-900 font-semibold shadow-sm"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                }`
+              }
+            >
+              <Icon className="w-[18px] h-[18px]" />
+              {label}
+            </NavLink>
+          )
+        )}
+      </nav>
+
+      {ig && (
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-white/8 hover:bg-white/12 transition cursor-pointer">
+            <img
+              src={ig.profile_picture_url}
+              alt=""
+              className="w-9 h-9 rounded-full ring-2 ring-brand-300/70"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">@{ig.username}</p>
+              <p className="text-xs text-brand-200">Connected</p>
+            </div>
+            <ChevronDown className="w-4 h-4 text-white/45 shrink-0" />
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 border-t border-white/10">
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/55 hover:text-coral-100 hover:bg-coral-500/10 rounded-lg transition"
+        >
+          <LogOut className="w-4 h-4" />
+          Sign out
+        </button>
+      </div>
+    </aside>
+  );
+}
