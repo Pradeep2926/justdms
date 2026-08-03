@@ -142,7 +142,7 @@ export const localSupabase = {
       return { data: { user: publicUser(user) }, error: null };
     },
 
-    async signInWithOAuth({ provider }) {
+    async signInWithOAuth({ provider, options = {} }) {
       if (provider !== "google") {
         return { data: {}, error: { message: "Unsupported OAuth provider" } };
       }
@@ -159,7 +159,7 @@ export const localSupabase = {
 
       setJson(USERS_KEY, [...users, user]);
       setJson(SESSION_KEY, { userId: user.id });
-      window.location.href = "/dashboard";
+      window.location.href = options.redirectTo || "/connect-meta";
 
       return { data: { user: publicUser(user) }, error: null };
     },

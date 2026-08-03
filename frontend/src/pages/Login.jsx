@@ -50,14 +50,14 @@ export default function Login() {
     }
 
     setLoading(false);
-    navigate("/dashboard");
+    navigate("/connect-meta");
   }
 
   async function handleGoogleLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/connect-meta`,
       },
     });
 
