@@ -1,22 +1,21 @@
 import { Instagram, Shield, ArrowRight } from "lucide-react";
-import { supabase } from "../lib/supabase";
 import AuthLayout from "../components/layout/AuthLayout";
 import { useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/api";
+import { useAuth } from "../hooks/useAuth";
 
 export default function ConnectMeta() {
   const [searchParams] = useSearchParams();
   const instagramError = searchParams.get("instagramError");
+  const { user, loading } = useAuth({ redirectOnFail: true });
 
-  const connectInstagram = async () => {
-    const { data, error } = await supabase.auth.getUser();
-
-    if (error || !data?.user) {
+  const connectInstagram = () => {
+    if (!user) {
       alert("User not logged in");
       return;
     }
 
-    const userEmail = data.user.email;
+    const userEmail = user.email;
 
     if (!userEmail) {
       alert("User email not found");
@@ -53,8 +52,12 @@ export default function ConnectMeta() {
           </div>
         </div>
 
-        <button onClick={connectInstagram} className="w-full btn-primary">
-          Connect Instagram
+        <button
+          onClick={connectInstagram}
+          disabled={loading}
+          className="w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Checking account..." : "Connect Instagram"}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
