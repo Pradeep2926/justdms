@@ -7,6 +7,8 @@ import Dashboard from "./pages/Dashboard";
 import Verify from "./pages/Verify";
 import ConnectMeta from "./pages/ConnectMeta";
 import Automation from "./pages/Automation"; // ✅ ADD THIS
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import DataDeletion from "./pages/DataDeletion";
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/data-deletion" element={<DataDeletion />} />
 
         {/* Optional verification */}
         <Route path="/verify" element={<Verify />} />

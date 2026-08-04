@@ -49,4 +49,12 @@
         transparent
       );
   }
+
+  .legal-content a {
+    @apply font-semibold text-brand-700 hover:text-brand-800;
+  }
+
+  .legal-content ul {
+    @apply list-disc space-y-2 pl-5;
+  }
 }

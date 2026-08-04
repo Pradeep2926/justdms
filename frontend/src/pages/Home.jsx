@@ -199,7 +199,17 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-8 px-6 border-t border-slate-100 text-center text-sm text-slate-500">
-        © {new Date().getFullYear()} JustDMs — Instagram DM Automation
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-5">
+          <span>
+            © {new Date().getFullYear()} JustDMs — Instagram DM Automation
+          </span>
+          <Link to="/privacy" className="font-medium hover:text-brand-700">
+            Privacy Policy
+          </Link>
+          <Link to="/data-deletion" className="font-medium hover:text-brand-700">
+            Data Deletion
+          </Link>
+        </div>
       </footer>
     </div>
   );
