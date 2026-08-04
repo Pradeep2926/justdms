@@ -48,9 +48,10 @@ router.get("/meta", (req, res) => {
     state: userEmail,
     auth_type: "rerequest",
     scope: [
-      "instagram_business_basic",
-      "instagram_business_manage_messages",
-      "instagram_business_manage_comments",
+      "instagram_basic",
+      "instagram_manage_messages",
+      "instagram_manage_comments",
+      "instagram_content_publish",
       "pages_show_list",
       "pages_read_engagement",
       "business_management",
