@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
 } from "lucide-react";
+import logoUrl from "../assets/justdms-logo.png";
 
 const FEATURES = [
   {
@@ -44,9 +45,11 @@ export default function Home() {
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-purple-500 rounded-lg flex items-center justify-center">
-              <MessageCircle className="w-4 h-4 text-white" />
-            </div>
+            <img
+              src={logoUrl}
+              alt="JustDMs"
+              className="h-8 w-8 rounded-lg object-cover shadow-sm"
+            />
             <span className="font-bold text-lg">JustDMs</span>
           </Link>
           <div className="flex items-center gap-3">

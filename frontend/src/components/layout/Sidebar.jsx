@@ -4,13 +4,14 @@ import {
   Zap,
   Users,
   Settings,
-  MessageCircle,
   ChevronDown,
   LogOut,
   Plus,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
+import logoUrl from "../../assets/justdms-logo.png";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: Activity, label: "Dashboard" },
@@ -19,25 +20,42 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: Settings, label: "Settings", disabled: true },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onNavigate }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { ig } = useInstagram(user?.email);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 w-64 bg-ink-900 text-white flex flex-col shrink-0 shadow-2xl">
+    <aside
+      className={`fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col bg-ink-900 text-white shadow-2xl transition-transform duration-200 md:translate-x-0 ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-gradient-to-br from-brand-400 to-coral-500 rounded-lg flex items-center justify-center shadow-glow">
-            <MessageCircle className="w-5 h-5 text-white" />
-          </div>
+          <img
+            src={logoUrl}
+            alt="JustDMs"
+            className="h-9 w-9 rounded-lg object-cover shadow-glow"
+          />
           <span className="text-lg font-bold tracking-tight">JustDMs</span>
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white md:hidden"
+            onClick={onNavigate}
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
       <div className="p-4">
         <button
-          onClick={() => navigate("/automation")}
+          onClick={() => {
+            onNavigate?.();
+            navigate("/automation");
+          }}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 transition hover:bg-brand-50"
         >
           <Plus className="w-4 h-4" />
@@ -63,6 +81,7 @@ export default function Sidebar() {
               key={to + label}
               to={to}
               end={to === "/dashboard"}
+              onClick={onNavigate}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
                   isActive
@@ -97,7 +116,10 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-white/10">
         <button
-          onClick={logout}
+          onClick={() => {
+            onNavigate?.();
+            logout();
+          }}
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-white/55 hover:text-coral-100 hover:bg-coral-500/10 rounded-lg transition"
         >
           <LogOut className="w-4 h-4" />
