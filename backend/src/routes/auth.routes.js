@@ -51,10 +51,8 @@ router.get("/meta", (req, res) => {
       "instagram_basic",
       "instagram_manage_messages",
       "instagram_manage_comments",
-      "instagram_content_publish",
       "pages_show_list",
       "pages_read_engagement",
-      "business_management",
     ].join(","),
   });
 
