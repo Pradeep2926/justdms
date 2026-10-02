@@ -4,10 +4,12 @@ const supabase = require("../lib/supabase");
 const router = express.Router();
 
 const AUTOMATION_UPDATE_FIELDS = [
+  "name",
   "media_id",
   "trigger_value",
   "message",
   "public_reply",
+  "opening_dm_enabled",
   "opening_dm_message",
   "opening_dm_button_text",
   "follow_required",
@@ -21,6 +23,12 @@ const AUTOMATION_UPDATE_FIELDS = [
   "resource_button_label",
   "is_active",
 ];
+
+function isMissingColumnError(error, column) {
+  return String(error?.message || error || "")
+    .toLowerCase()
+    .includes(`'${column}'`);
+}
 
 router.get("/:userEmail", async (req, res) => {
   try {
@@ -85,10 +93,12 @@ router.post("/", async (req, res) => {
     const {
       user_id,
       user_email,
+      name,
       media_id,
       trigger_value,
       message,
       public_reply,
+      opening_dm_enabled,
       opening_dm_message,
       opening_dm_button_text,
       follow_required,
@@ -108,47 +118,66 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const { data, error } = await supabase
+    const automationRecord = {
+      user_id,
+      user_email,
+      name: name || null,
+      media_id,
+      trigger_type: "keyword",
+      trigger_value,
+      message,
+      public_reply:
+        public_reply ||
+        "Sent check the DM",
+      opening_dm_enabled: opening_dm_enabled !== false,
+      opening_dm_message:
+        opening_dm_message ||
+        "Hey {{first_name}} 👋\nThanks for commenting!\nPlease tap the button below to get the details.",
+      opening_dm_button_text:
+        opening_dm_button_text || "Get Details",
+      follow_required: Boolean(follow_required),
+      not_following_message:
+        not_following_message ||
+        "Oops! It looks like you’re not following us yet 👀\n\nThis resource is available only to our followers.\n\nPlease visit our profile, follow us, and then tap ‘I’m Following’ below.",
+      visit_profile_button_text:
+        visit_profile_button_text || "Visit Profile",
+      confirm_follow_button_text:
+        confirm_follow_button_text || "I’m Following ✓",
+      still_not_following_message:
+        still_not_following_message ||
+        "It still looks like you haven’t followed yet 😊\nPlease follow the profile first, then tap ‘I’m Following’ again.",
+      success_message:
+        success_message ||
+        "Awesome 🎉 Thanks for following!\nHere are the details you requested:",
+      resource_type: resource_type || "link",
+      resource_url: resource_url || null,
+      resource_button_label:
+        resource_button_label || "Open Details",
+      is_active: true,
+    };
+
+    let { data, error } = await supabase
       .from("automations")
-      .insert([
-        {
-          user_id,
-          user_email,
-          media_id,
-          trigger_type: "keyword",
-          trigger_value,
-          message,
-          public_reply:
-            public_reply ||
-            "Sent check the DM",
-          opening_dm_message:
-            opening_dm_message ||
-            "Hey {{first_name}} 👋\nThanks for commenting!\nPlease tap the button below to get the details.",
-          opening_dm_button_text:
-            opening_dm_button_text || "Get Details",
-          follow_required: Boolean(follow_required),
-          not_following_message:
-            not_following_message ||
-            "Oops! It looks like you’re not following us yet 👀\n\nThis resource is available only to our followers.\n\nPlease visit our profile, follow us, and then tap ‘I’m Following’ below.",
-          visit_profile_button_text:
-            visit_profile_button_text || "Visit Profile",
-          confirm_follow_button_text:
-            confirm_follow_button_text || "I’m Following ✓",
-          still_not_following_message:
-            still_not_following_message ||
-            "It still looks like you haven’t followed yet 😊\nPlease follow the profile first, then tap ‘I’m Following’ again.",
-          success_message:
-            success_message ||
-            "Awesome 🎉 Thanks for following!\nHere are the details you requested:",
-          resource_type: resource_type || "link",
-          resource_url: resource_url || null,
-          resource_button_label:
-            resource_button_label || "Open Details",
-          is_active: true,
-        },
-      ])
+      .insert([automationRecord])
       .select()
       .single();
+
+    if (
+      error &&
+      (isMissingColumnError(error, "name") ||
+        isMissingColumnError(error, "opening_dm_enabled"))
+    ) {
+      const fallbackRecord = { ...automationRecord };
+      delete fallbackRecord.name;
+      delete fallbackRecord.opening_dm_enabled;
+      const fallback = await supabase
+        .from("automations")
+        .insert([fallbackRecord])
+        .select()
+        .single();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error("❌ Supabase insert error:", error);
@@ -186,12 +215,30 @@ router.patch("/:id", async (req, res) => {
 
     updates.updated_at = new Date().toISOString();
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("automations")
       .update(updates)
       .eq("id", id)
       .select()
       .single();
+
+    if (
+      error &&
+      (isMissingColumnError(error, "name") ||
+        isMissingColumnError(error, "opening_dm_enabled"))
+    ) {
+      const fallbackUpdates = { ...updates };
+      delete fallbackUpdates.name;
+      delete fallbackUpdates.opening_dm_enabled;
+      const fallback = await supabase
+        .from("automations")
+        .update(fallbackUpdates)
+        .eq("id", id)
+        .select()
+        .single();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error("❌ Automation update error:", error);

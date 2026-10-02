@@ -4,8 +4,9 @@ const supabase = require("../lib/supabase");
 
 const META_GRAPH_VERSION = "v19.0";
 const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
+const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 const INSTAGRAM_PROFILE_FIELDS =
-  "id,username,name,profile_picture_url,followers_count,follows_count,media_count";
+  "id,username,name,account_type,profile_picture_url,followers_count,follows_count,media_count";
 
 function addDays(days) {
   return new Date(
@@ -47,6 +48,47 @@ async function graphGet(path, accessToken, params = {}) {
   }
 }
 
+async function instagramGraphGet(path, accessToken, params = {}) {
+  try {
+    const response = await axios.get(`${INSTAGRAM_GRAPH_BASE_URL}/${path}`, {
+      params: { ...params, access_token: accessToken },
+      timeout: 20000,
+    });
+    return response.data;
+  } catch (error) {
+    throw new Error(metaError(error, `Instagram request failed for ${path}`));
+  }
+}
+
+async function exchangeInstagramCodeForToken({ code, appId, appSecret, redirectUri }) {
+  const form = new URLSearchParams({
+    client_id: appId,
+    client_secret: appSecret,
+    grant_type: "authorization_code",
+    redirect_uri: redirectUri,
+    code,
+  });
+  const shortResponse = await axios.post(
+    "https://api.instagram.com/oauth/access_token",
+    form.toString(),
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 20000 }
+  );
+  const shortToken = shortResponse.data.access_token;
+  const longToken = await axios.get("https://graph.instagram.com/access_token", {
+    params: {
+      grant_type: "ig_exchange_token",
+      client_secret: appSecret,
+      access_token: shortToken,
+    },
+    timeout: 20000,
+  });
+  return {
+    accessToken: longToken.data.access_token || shortToken,
+    expiresIn: longToken.data.expires_in || 60 * 24 * 60 * 60,
+    userId: shortResponse.data.user_id,
+  };
+}
+
 async function exchangeCodeForToken({
   code,
   appId,
@@ -85,7 +127,7 @@ async function exchangeCodeForToken({
   };
 }
 
-async function findInstagramBusinessAccount(accessToken) {
+async function listInstagramBusinessAccounts(accessToken) {
   const pages = await graphGet(
     "me/accounts",
     accessToken,
@@ -95,14 +137,22 @@ async function findInstagramBusinessAccount(accessToken) {
     }
   );
 
-  const page = pages.data?.find(
-    (candidate) =>
-      candidate.instagram_business_account?.id
+  return (pages.data || []).filter(
+    (candidate) => candidate.instagram_business_account?.id
   );
+}
+
+async function findInstagramBusinessAccount(accessToken, pageId) {
+  const pages = await listInstagramBusinessAccounts(accessToken);
+  const page = pageId
+    ? pages.find((candidate) => candidate.id === pageId)
+    : pages[0];
 
   if (!page) {
     throw new Error(
-      "No Instagram Business or Creator account found. Connect an Instagram professional account to a Facebook Page first."
+      pageId
+        ? "The selected Facebook Page is unavailable. Reconnect Meta and grant access to that Page."
+        : "No Instagram Business or Creator account found. Connect an Instagram professional account to a Facebook Page first."
     );
   }
 
@@ -115,10 +165,12 @@ async function findInstagramBusinessAccount(accessToken) {
 
 async function fetchInstagramProfile(
   instagramUserId,
-  accessToken
+  accessToken,
+  authProvider = "facebook"
 ) {
-  return graphGet(
-    instagramUserId,
+  const get = authProvider === "instagram" ? instagramGraphGet : graphGet;
+  return get(
+    authProvider === "instagram" ? "me" : instagramUserId,
     accessToken,
     {
       fields: INSTAGRAM_PROFILE_FIELDS,
@@ -128,9 +180,11 @@ async function fetchInstagramProfile(
 
 async function fetchInstagramMedia(
   instagramUserId,
-  accessToken
+  accessToken,
+  authProvider = "facebook"
 ) {
-  const result = await graphGet(
+  const get = authProvider === "instagram" ? instagramGraphGet : graphGet;
+  const result = await get(
     `${instagramUserId}/media`,
     accessToken,
     {
@@ -145,10 +199,12 @@ async function fetchInstagramMedia(
 
 async function fetchMediaComments(
   mediaId,
-  accessToken
+  accessToken,
+  authProvider = "facebook"
 ) {
   try {
-    const result = await graphGet(
+    const get = authProvider === "instagram" ? instagramGraphGet : graphGet;
+    const result = await get(
       `${mediaId}/comments`,
       accessToken,
       {
@@ -211,6 +267,20 @@ async function saveAccount(account) {
     last_sync: now,
     updated_at: now,
   };
+
+  const isSwitchingAccount =
+    existing?.instagram_user_id &&
+    account.instagram_user_id &&
+    existing.instagram_user_id !== account.instagram_user_id;
+
+  if (isSwitchingAccount) {
+    const { error: cleanupError } = await supabase
+      .from("instagram_media")
+      .delete()
+      .eq("account_id", existing.id);
+
+    if (cleanupError) throw cleanupError;
+  }
 
   if (existing) {
     const { error } = await supabase
@@ -365,12 +435,14 @@ async function syncAccount(userEmail) {
 
   const profile = await fetchInstagramProfile(
     instagramUserId,
-    token
+    token,
+    account.auth_provider
   );
 
   const media = await fetchInstagramMedia(
     instagramUserId,
-    token
+    token,
+    account.auth_provider
   );
 
   const now = new Date().toISOString();
@@ -415,7 +487,8 @@ async function syncAccount(userEmail) {
     const comments =
       await fetchMediaComments(
         item.id,
-        token
+        token,
+        account.auth_provider
       );
 
     await saveComments(
@@ -435,6 +508,7 @@ async function connectInstagramAccount({
   userEmail,
   code,
   metaConfig,
+  pageId,
 }) {
   if (!userEmail) {
     throw new Error("User email is required.");
@@ -465,10 +539,22 @@ async function connectInstagramAccount({
         metaConfig.redirectUri,
     });
 
+  return connectInstagramAccountWithToken({
+    userEmail,
+    accessToken,
+    expiresIn,
+    pageId,
+  });
+}
+
+async function connectInstagramAccountWithToken({
+  userEmail,
+  accessToken,
+  expiresIn,
+  pageId,
+}) {
   const { page, instagramAccount } =
-    await findInstagramBusinessAccount(
-      accessToken
-    );
+    await findInstagramBusinessAccount(accessToken, pageId);
 
   const pageAccessToken =
     page.access_token || accessToken;
@@ -535,6 +621,55 @@ async function connectInstagramAccount({
   return saved;
 }
 
+async function connectInstagramDirectAccount({ userEmail, code, instagramConfig }) {
+  if (!userEmail || !code) throw new Error("Instagram authorization is incomplete.");
+  const token = await exchangeInstagramCodeForToken({
+    code,
+    appId: instagramConfig.appId,
+    appSecret: instagramConfig.appSecret,
+    redirectUri: instagramConfig.redirectUri,
+  });
+  const profile = await fetchInstagramProfile(token.userId, token.accessToken, "instagram");
+  const instagramUserId = profile.id || profile.user_id || token.userId;
+  const now = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + token.expiresIn * 1000).toISOString();
+
+  const saved = await saveAccount({
+    user_email: userEmail,
+    user_id: userEmail,
+    auth_provider: "instagram",
+    instagram_user_id: instagramUserId,
+    instagram_account_id: instagramUserId,
+    facebook_page_id: null,
+    page_id: null,
+    business_account_id: instagramUserId,
+    username: profile.username,
+    instagram_username: profile.username,
+    name: profile.name || null,
+    account_type: profile.account_type || "BUSINESS",
+    profile_picture_url: profile.profile_picture_url || null,
+    profile_picture: profile.profile_picture_url || null,
+    followers: profile.followers_count ?? null,
+    followers_count: profile.followers_count ?? null,
+    following: profile.follows_count ?? null,
+    follows_count: profile.follows_count ?? null,
+    media_count: profile.media_count ?? null,
+    access_token: token.accessToken,
+    page_access_token: null,
+    expires_at: expiresAt,
+    token_expires_at: expiresAt,
+    token_status: "active",
+    webhook_enabled: false,
+    connected_at: now,
+    last_sync: now,
+  });
+
+  syncAccount(userEmail).catch((error) => {
+    console.error(`Initial direct Instagram sync failed for ${userEmail}:`, error.message);
+  });
+  return saved;
+}
+
 async function getDashboard(userEmail) {
   if (!userEmail) {
     throw new Error("User email is required.");
@@ -593,6 +728,11 @@ async function getDashboard(userEmail) {
 
 module.exports = {
   connectInstagramAccount,
+  connectInstagramAccountWithToken,
+  connectInstagramDirectAccount,
+  exchangeInstagramCodeForToken,
+  exchangeCodeForToken,
+  listInstagramBusinessAccounts,
   getDashboard,
   syncAccount,
 };

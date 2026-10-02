@@ -88,6 +88,14 @@ export default function Dashboard() {
               <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
               {syncing ? "Syncing..." : "Sync"}
             </button>
+            <button
+              type="button"
+              onClick={() => navigate("/connect-meta")}
+              className="btn-secondary text-sm py-2.5"
+            >
+              <Instagram className="h-4 w-4" />
+              Switch account
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">

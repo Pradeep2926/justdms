@@ -2,6 +2,7 @@ create table if not exists instagram_accounts (
   id uuid primary key default gen_random_uuid(),
   user_id text,
   user_email text unique not null,
+  auth_provider text default 'facebook',
   instagram_user_id text,
   instagram_account_id text,
   facebook_page_id text,
@@ -30,6 +31,21 @@ create table if not exists instagram_accounts (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+alter table instagram_accounts
+  add column if not exists auth_provider text default 'facebook';
+
+create table if not exists pending_meta_connections (
+  id uuid primary key default gen_random_uuid(),
+  user_email text not null,
+  access_token text not null,
+  token_expires_in integer,
+  expires_at timestamptz not null,
+  created_at timestamptz default now()
+);
+
+create index if not exists pending_meta_connections_user_email_idx
+  on pending_meta_connections(user_email);
 
 create table if not exists instagram_media (
   id text primary key,
@@ -80,6 +96,7 @@ alter table webhook_events
 
 create table if not exists automations (
   id uuid primary key default gen_random_uuid(),
+  name text,
   user_id text not null,
   user_email text,
   media_id text references instagram_media(id) on delete cascade,
@@ -87,6 +104,7 @@ create table if not exists automations (
   trigger_value text not null,
   message text not null,
   public_reply text,
+  opening_dm_enabled boolean default true,
   opening_dm_message text,
   opening_dm_button_text text,
   follow_required boolean default false,
@@ -104,8 +122,10 @@ create table if not exists automations (
 );
 
 alter table automations
+  add column if not exists name text,
   add column if not exists user_email text,
   add column if not exists public_reply text,
+  add column if not exists opening_dm_enabled boolean default true,
   add column if not exists opening_dm_message text,
   add column if not exists opening_dm_button_text text,
   add column if not exists follow_required boolean default false,

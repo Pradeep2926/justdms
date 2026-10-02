@@ -5,6 +5,7 @@ const supabase = require("../lib/supabase");
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
 const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
+const INSTAGRAM_GRAPH_URL = `https://graph.instagram.com/${GRAPH_VERSION}`;
 const DEFAULT_PUBLIC_REPLY =
   "Sent check the DM";
 
@@ -14,6 +15,10 @@ function delay(ms) {
 
 function tokenFor(account) {
   return account?.page_access_token || account?.access_token;
+}
+
+function graphUrlFor(account) {
+  return account?.auth_provider === "instagram" ? INSTAGRAM_GRAPH_URL : GRAPH_URL;
 }
 
 function tokensForInstagramProfile(account) {
@@ -68,7 +73,7 @@ async function metaPost(path, account, body, label, accessTokenOverride = null) 
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      return await axios.post(`${GRAPH_URL}/${path}`, body, {
+      return await axios.post(`${graphUrlFor(account)}/${path}`, body, {
         params: { access_token: accessToken },
         timeout: 15000,
       });
@@ -94,7 +99,7 @@ async function metaGet(path, account, params = {}, label = "Meta GET") {
   const accessToken = tokenFor(account);
 
   try {
-    return await axios.get(`${GRAPH_URL}/${path}`, {
+    return await axios.get(`${graphUrlFor(account)}/${path}`, {
       params: { ...params, access_token: accessToken },
       timeout: 15000,
     });
@@ -222,7 +227,7 @@ async function getAutomationAccount(automation) {
   if (!automation?.user_email && automation?.media_id) {
     const { data: mediaAccount, error: mediaAccountError } = await supabase
       .from("instagram_media")
-      .select("account_id,instagram_accounts(id,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url,user_email)")
+      .select("account_id,instagram_accounts(id,auth_provider,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url,user_email)")
       .eq("id", automation.media_id)
       .maybeSingle();
 
@@ -232,7 +237,7 @@ async function getAutomationAccount(automation) {
 
   const { data, error } = await supabase
     .from("instagram_accounts")
-    .select("id,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url")
+    .select("id,auth_provider,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url")
     .eq("user_email", automation.user_email)
     .maybeSingle();
 
@@ -245,7 +250,7 @@ async function getAccountForMedia(mediaId) {
 
   const { data, error } = await supabase
     .from("instagram_media")
-    .select("account_id,instagram_accounts(id,user_email,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url)")
+    .select("account_id,instagram_accounts(id,user_email,auth_provider,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url)")
     .eq("id", mediaId)
     .maybeSingle();
 
@@ -254,7 +259,7 @@ async function getAccountForMedia(mediaId) {
   if (data?.account_id) {
     const { data: mediaAccount, error: mediaAccountError } = await supabase
       .from("instagram_accounts")
-      .select("id,user_email,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url")
+      .select("id,user_email,auth_provider,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url")
       .eq("id", data.account_id)
       .maybeSingle();
 
@@ -264,7 +269,7 @@ async function getAccountForMedia(mediaId) {
 
   const { data: accounts = [], error: accountsError } = await supabase
     .from("instagram_accounts")
-    .select("id,user_email,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url");
+    .select("id,user_email,auth_provider,instagram_user_id,instagram_account_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url");
 
   if (accountsError) throw accountsError;
 
@@ -1096,7 +1101,30 @@ async function processComment({ body, entry, change, value }) {
     }
   }
 
-  if (!interaction.opening_dm_sent_at) {
+  const openingDmEnabled = automation.opening_dm_enabled !== false;
+
+  if (!openingDmEnabled && !interaction.resource_delivered_at) {
+    await saveAutomationEvent({
+      interactionId: interaction.id,
+      automationId: automation.id,
+      connectedAccountId: account.id,
+      instagramSenderId: senderId,
+      commentId,
+      mediaId,
+      eventType: "opening_dm_skipped",
+      direction: "internal",
+      payload: { reason: "opening_dm_disabled" },
+    });
+
+    if (automation.follow_required) {
+      await sendFollowPrompt({ account, automation, interaction });
+    } else {
+      await sendResource({ account, automation, interaction });
+    }
+    return;
+  }
+
+  if (openingDmEnabled && !interaction.opening_dm_sent_at) {
     try {
       const dmResult = await sendOpeningDirectMessage({
         account,
