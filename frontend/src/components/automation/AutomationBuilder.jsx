@@ -515,7 +515,12 @@ function PostModal({ posts, selectedPost, setSelectedPost, onClose }) {
   return (
     <Modal title="Select Post or Reel" onClose={onClose}>
       <PostSelector posts={posts} selectedPost={selectedPost} onSelect={setSelectedPost} />
-      <button type="button" onClick={onClose} className="btn-primary mt-6 w-full">
+      <button
+        type="button"
+        onClick={onClose}
+        disabled={!selectedPost}
+        className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-50"
+      >
         Confirm
       </button>
     </Modal>

@@ -1,4 +1,5 @@
-import { Check } from "lucide-react";
+import { useState } from "react";
+import { Check, Film } from "lucide-react";
 
 export default function PostSelector({ posts, selectedPost, onSelect }) {
   if (posts.length === 0) {
@@ -24,21 +25,25 @@ export default function PostSelector({ posts, selectedPost, onSelect }) {
             key={post.id}
             type="button"
             onClick={() => onSelect(post.id)}
-            className={`group relative rounded-xl overflow-hidden border-2 transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 ${
+            aria-label={`Select ${post.media_type === "VIDEO" ? "reel" : "post"}${
+              post.caption ? `: ${post.caption}` : ""
+            }`}
+            aria-pressed={selected}
+            className={`group relative aspect-square overflow-hidden rounded-lg border-2 bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-brand-500/40 ${
               selected
                 ? "border-brand-500 ring-2 ring-brand-500/20"
                 : "border-transparent hover:border-slate-200"
             }`}
           >
-            <img
-              src={post.media_url || post.thumbnail_url}
-              alt=""
-              className="w-full aspect-square object-cover"
-            />
+            <PostPreview post={post} />
+            <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-slate-950/75 px-2 py-1 text-xs font-bold text-white">
+              {post.media_type === "VIDEO" && <Film className="h-3.5 w-3.5" />}
+              {post.media_type === "VIDEO" ? "Reel" : "Post"}
+            </span>
             {selected && (
-              <div className="absolute inset-0 bg-brand-600/20 flex items-center justify-center">
-                <div className="w-8 h-8 bg-brand-600 rounded-full flex items-center justify-center">
-                  <Check className="w-5 h-5 text-white" />
+              <div className="absolute inset-0 flex items-center justify-center bg-brand-600/25">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 shadow-lg">
+                  <Check className="h-5 w-5 text-white" />
                 </div>
               </div>
             )}
@@ -46,6 +51,33 @@ export default function PostSelector({ posts, selectedPost, onSelect }) {
         );
       })}
     </div>
+  );
+}
+
+function PostPreview({ post }) {
+  const [failed, setFailed] = useState(false);
+  const imageUrl = post.thumbnail_url || post.media_url;
+
+  if (!imageUrl || failed) {
+    return <MissingPreview />;
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt={post.caption || (post.media_type === "VIDEO" ? "Instagram reel" : "Instagram post")}
+      className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function MissingPreview() {
+  return (
+    <span className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-500">
+      <ImageIcon />
+      <span className="text-xs font-semibold">Preview unavailable</span>
+    </span>
   );
 }
 
