@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Crown,
+  Sparkles,
 } from "lucide-react";
 import logoUrl from "../assets/justdms-logo.png";
 
@@ -30,6 +31,11 @@ const FEATURES = [
     icon: BarChart3,
     title: "Analytics Dashboard",
     desc: "Track reply rates, popular keywords, and campaign performance.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI Replies",
+    desc: "Use context-aware AI to answer common customer questions in your brand voice.",
   },
 ];
 
@@ -147,7 +153,7 @@ export default function Home() {
                 </p>
                 <p className="mt-2 text-sm font-semibold text-emerald-700">{plan.note}</p>
                 <div className="mt-6 space-y-3">
-                  {["All automation features", "Unlimited automations", "Unlimited DMs*", "Analytics and lead collection"].map((feature) => (
+                  {["All automation features", "Unlimited automations", "Unlimited DMs*", "Analytics and lead collection", "AI Replies"].map((feature) => (
                     <span key={feature} className="flex items-start gap-2 text-sm text-slate-700">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                       {feature}
