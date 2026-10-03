@@ -14,6 +14,10 @@ import ResetPassword from "./pages/ResetPassword";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
 import RefundPolicy from "./pages/RefundPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import AcceptableUse from "./pages/AcceptableUse";
+import DataRetention from "./pages/DataRetention";
+import PrivacyRights from "./pages/PrivacyRights";
 
 export default function App() {
   return (
@@ -28,6 +32,10 @@ export default function App() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/data-deletion" element={<DataDeletion />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/acceptable-use" element={<AcceptableUse />} />
+        <Route path="/data-retention" element={<DataRetention />} />
+        <Route path="/privacy-rights" element={<PrivacyRights />} />
 
         {/* Optional verification */}
         <Route path="/verify" element={<Verify />} />

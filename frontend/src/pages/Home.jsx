@@ -261,22 +261,75 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-100 px-6 py-8 text-center text-sm text-slate-500">
-        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:gap-5">
-          <span>
-            © {new Date().getFullYear()} JustDMs — Instagram DM Automation
-          </span>
-          <Link to="/privacy" className="font-medium hover:text-brand-700">
-            Privacy & Data Policy
-          </Link>
-          <Link to="/refund-policy" className="font-medium hover:text-brand-700">
-            Refund Policy
-          </Link>
-          <Link to="/data-deletion" className="font-medium hover:text-brand-700">
-            Data Deletion
-          </Link>
+      <footer className="border-t border-slate-200 bg-slate-950 px-6 pb-8 pt-16 text-slate-300">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-12 border-b border-white/10 pb-12 md:grid-cols-[1.5fr_1fr_1fr_1.35fr]">
+            <div>
+              <Link to="/" className="inline-flex items-center gap-3 text-white">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-1.5 shadow-lg">
+                  <img src={logoUrl} alt="JustDMs" className="h-full w-full rounded-lg object-contain" />
+                </span>
+                <span className="text-2xl font-bold">JustDMs</span>
+              </Link>
+              <p className="mt-5 max-w-sm text-sm leading-6 text-slate-400">
+                Instagram comment and DM automation for businesses and creators, powered through official Meta APIs.
+              </p>
+              <p className="mt-4 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-300">
+                Official Meta API integration
+              </p>
+            </div>
+
+            <FooterColumn title="Product" links={[
+              ["Features", "/#features"],
+              ["How It Works", "/#how-it-works"],
+              ["Pricing", "/#pricing"],
+              ["Login", "/login"],
+            ]} />
+
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-white">Support</h3>
+              <div className="mt-5 flex flex-col gap-3 text-sm">
+                <a href="mailto:support@justdms.in" className="hover:text-cyan-300">Email Support</a>
+                <a href="https://wa.me/917799100870" target="_blank" rel="noreferrer" className="hover:text-cyan-300">WhatsApp Support</a>
+                <Link to="/refund-policy" className="hover:text-cyan-300">Billing & Refunds</Link>
+                <Link to="/data-deletion" className="hover:text-cyan-300">Delete My Data</Link>
+              </div>
+            </div>
+
+            <FooterColumn title="Legal" links={[
+              ["Privacy & Data Policy", "/privacy"],
+              ["Terms of Service", "/terms"],
+              ["Acceptable Use Policy", "/acceptable-use"],
+              ["Refund & Cancellation", "/refund-policy"],
+              ["Data Retention", "/data-retention"],
+              ["Data Deletion", "/data-deletion"],
+              ["GDPR & CCPA Rights", "/privacy-rights"],
+            ]} />
+          </div>
+
+          <div className="flex flex-col gap-3 pt-7 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <p>© {new Date().getFullYear()} JustDMs. All rights reserved.</p>
+            <p>Instagram and Meta are trademarks of Meta Platforms, Inc. JustDMs is not affiliated with or endorsed by Meta.</p>
+          </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function FooterColumn({ title, links }) {
+  return (
+    <div>
+      <h3 className="text-sm font-bold uppercase tracking-wide text-white">{title}</h3>
+      <div className="mt-5 flex flex-col gap-3 text-sm">
+        {links.map(([label, to]) => (
+          to.startsWith("/#") ? (
+            <a key={to} href={to} className="transition hover:text-cyan-300">{label}</a>
+          ) : (
+            <Link key={to} to={to} className="transition hover:text-cyan-300">{label}</Link>
+          )
+        ))}
+      </div>
     </div>
   );
 }
