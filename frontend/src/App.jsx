@@ -13,6 +13,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import DataDeletion from "./pages/DataDeletion";
+import RefundPolicy from "./pages/RefundPolicy";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/data-deletion" element={<DataDeletion />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
 
         {/* Optional verification */}
         <Route path="/verify" element={<Verify />} />

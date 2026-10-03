@@ -3,7 +3,7 @@ import logoUrl from "../assets/justdms-logo.png";
 
 export default function PrivacyPolicy() {
   return (
-    <LegalPage title="Privacy Policy" updated="August 5, 2026">
+    <LegalPage title="Privacy & Data Policy" updated="October 3, 2026">
       <Section title="Overview">
         <p>
           JustDMs helps Instagram Business and Creator accounts automate
@@ -64,6 +64,37 @@ export default function PrivacyPolicy() {
         </p>
       </Section>
 
+      <Section title="Service Providers">
+        <p>
+          JustDMs uses service providers to operate the product, including Meta
+          for Instagram integrations, Supabase for authentication and data
+          storage, Render and Vercel for application hosting, Resend for
+          transactional email, and Razorpay for subscription billing. These
+          providers process data only to deliver their contracted services and
+          under their own security and privacy obligations.
+        </p>
+      </Section>
+
+      <Section title="Payments">
+        <p>
+          Subscription payments are processed by Razorpay. JustDMs does not
+          store complete card, bank account, or UPI credentials. We retain
+          limited billing records such as your plan, subscription status,
+          payment-provider identifiers, billing cycle, and payment timestamps
+          for account administration and legal compliance.
+        </p>
+      </Section>
+
+      <Section title="Data Security">
+        <p>
+          We use access controls, encrypted connections, restricted service
+          credentials, and operational monitoring intended to protect your
+          information. No online service can guarantee absolute security, so
+          you should also protect your account credentials and notify us if you
+          suspect unauthorized access.
+        </p>
+      </Section>
+
       <Section title="Data Retention">
         <p>
           We retain account, automation, webhook, and delivery records while
@@ -85,6 +116,23 @@ export default function PrivacyPolicy() {
         </ul>
       </Section>
 
+      <Section title="Your Data Rights">
+        <p>
+          Depending on your location, you may request access to, correction of,
+          portability of, restriction of, or deletion of personal information
+          associated with your account. We may need to verify your identity
+          before completing a request.
+        </p>
+      </Section>
+
+      <Section title="Policy Changes">
+        <p>
+          We may update this policy when our services, providers, or legal
+          obligations change. The latest version and its effective date will
+          always be published on this page.
+        </p>
+      </Section>
+
       <Section title="Contact">
         <p>
           For privacy questions or deletion requests, contact us at{" "}
@@ -104,7 +152,7 @@ function LegalPage({ title, updated, children }) {
             <img
               src={logoUrl}
               alt="JustDMs"
-              className="h-8 w-8 rounded-lg object-cover shadow-sm"
+              className="h-9 w-9 object-contain"
             />
             <span className="text-lg font-bold text-ink-900">JustDMs</span>
           </Link>

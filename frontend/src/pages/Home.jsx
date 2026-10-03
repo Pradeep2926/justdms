@@ -6,6 +6,7 @@ import {
   BarChart3,
   ArrowRight,
   CheckCircle2,
+  Crown,
 } from "lucide-react";
 import logoUrl from "../assets/justdms-logo.png";
 
@@ -48,11 +49,17 @@ export default function Home() {
             <img
               src={logoUrl}
               alt="JustDMs"
-              className="h-8 w-8 rounded-lg object-cover shadow-sm"
+              className="h-9 w-9 object-contain"
             />
             <span className="font-bold text-lg">JustDMs</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href="#pricing"
+              className="hidden px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 sm:block"
+            >
+              Pricing
+            </a>
             <Link
               to="/login"
               className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2"
@@ -60,7 +67,7 @@ export default function Home() {
               Login
             </Link>
             <Link to="/register" className="btn-primary text-sm py-2.5">
-              Start For Free
+              Get Started
             </Link>
           </div>
         </div>
@@ -86,19 +93,77 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link to="/register" className="btn-primary text-base px-8 py-4">
-              Start For Free
+            <a href="#pricing" className="btn-primary text-base px-8 py-4">
+              View Pro Plan
               <ArrowRight className="w-5 h-5" />
-            </Link>
+            </a>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6 text-sm text-slate-500">
-            {["Meta Verified", "No Credit Card", "Instant Setup"].map((t) => (
+            {["Meta Verified", "Secure Billing", "Instant Setup"].map((t) => (
               <span key={t} className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 {t}
               </span>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="scroll-mt-20 border-y border-slate-100 bg-slate-50 px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center">
+            <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
+              Simple pricing
+            </p>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">One plan. Every automation tool.</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-slate-600">
+              Choose monthly flexibility or save with annual billing. Cancel future renewals at any time.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-12 max-w-xl overflow-hidden rounded-lg border border-brand-200 bg-white shadow-card">
+            <div className="border-b border-slate-100 px-6 py-6 sm:px-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold uppercase text-brand-700">
+                    <Crown className="h-3.5 w-3.5" /> JustDMs Pro
+                  </span>
+                  <h3 className="mt-4 text-2xl font-bold">Everything you need to automate Instagram DMs</h3>
+                </div>
+                <div className="shrink-0 sm:text-right">
+                  <p className="text-3xl font-extrabold text-slate-950">₹199<span className="text-sm font-medium text-slate-500">/month</span></p>
+                  <p className="mt-1 text-sm font-semibold text-emerald-700">₹1,999/year · Best value</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-6 sm:px-8">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  "Comment-to-DM automation",
+                  "Keyword triggers",
+                  "Automatic comment replies",
+                  "DM automation and link delivery",
+                  "Follow-gate flows",
+                  "Lead collection and analytics",
+                  "Unlimited automations",
+                  "Unlimited DMs*",
+                ].map((feature) => (
+                  <span key={feature} className="flex items-start gap-2 text-sm text-slate-700">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    {feature}
+                  </span>
+                ))}
+              </div>
+              <Link to="/register" className="btn-primary mt-8 w-full py-3.5">
+                Create your account <ArrowRight className="h-4 w-4" />
+              </Link>
+              <p className="mt-4 text-center text-xs leading-5 text-slate-500">
+                *Unlimited DMs are subject to Instagram/Meta API limits and fair usage. Prices include applicable taxes only where stated at checkout.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -166,7 +231,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             {STEPS.map(({ num, title, desc }) => (
               <div key={num} className="text-center">
-                <div className="w-14 h-14 bg-brand-600 text-white rounded-2xl flex items-center justify-center text-lg font-bold mx-auto mb-5">
+                <div className="brand-gradient w-14 h-14 text-white rounded-2xl flex items-center justify-center text-lg font-bold mx-auto mb-5 shadow-glow">
                   {num}
                 </div>
                 <h3 className="font-semibold text-lg">{title}</h3>
@@ -179,32 +244,35 @@ export default function Home() {
 
       {/* CTA */}
       <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center card p-12 bg-gradient-to-br from-brand-600 to-purple-600 border-0 text-white">
+        <div className="brand-gradient max-w-3xl mx-auto text-center card p-12 border-0 text-white">
           <h2 className="text-3xl font-bold">
             Ready to stop missing DMs?
           </h2>
           <p className="text-white/80 mt-3 mb-8">
-            Join creators who automate Instagram conversations with JustDMs.
-            Free to start, no card needed.
+            Create your account, choose a Pro billing cycle, and start building
+            Instagram automations in minutes.
           </p>
           <Link
             to="/register"
             className="inline-flex items-center gap-2 bg-white text-brand-700 font-semibold px-8 py-4 rounded-xl hover:bg-slate-50 transition"
           >
-            Start For Free
+            Create Account
             <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-100 text-center text-sm text-slate-500">
-        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-5">
+      <footer className="border-t border-slate-100 px-6 py-8 text-center text-sm text-slate-500">
+        <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:gap-5">
           <span>
             © {new Date().getFullYear()} JustDMs — Instagram DM Automation
           </span>
           <Link to="/privacy" className="font-medium hover:text-brand-700">
-            Privacy Policy
+            Privacy & Data Policy
+          </Link>
+          <Link to="/refund-policy" className="font-medium hover:text-brand-700">
+            Refund Policy
           </Link>
           <Link to="/data-deletion" className="font-medium hover:text-brand-700">
             Data Deletion

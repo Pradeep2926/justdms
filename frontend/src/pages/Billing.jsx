@@ -108,7 +108,7 @@ export default function Billing() {
         description: order.planLabel,
         subscription_id: order.subscriptionId,
         prefill: { email: user.email },
-        theme: { color: "#0891b2" },
+        theme: { color: "#0567dd" },
         handler: async (payment) => {
           try {
             const verifyHeaders = await billingHeaders(user);

@@ -6,7 +6,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#eef7f8_0%,#f8fafc_42%,#fff7ed_100%)]">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#ecfeff_0%,#f5f9ff_42%,#f7f2ff_100%)]">
       {sidebarOpen && (
         <button
           type="button"
@@ -21,7 +21,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
       />
 
       <div className="flex min-h-screen flex-col min-w-0 md:ml-64">
-        <header className="sticky top-0 z-10 border-b border-white/70 bg-white/80 px-4 py-4 backdrop-blur-xl sm:px-6 md:px-8">
+        <header className="sticky top-0 z-10 border-b border-brand-100/70 bg-white/85 px-4 py-4 backdrop-blur-xl sm:px-6 md:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-3">
               <button

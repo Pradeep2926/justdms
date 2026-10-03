@@ -10,7 +10,7 @@ export default function DataDeletion() {
             <img
               src={logoUrl}
               alt="JustDMs"
-              className="h-8 w-8 rounded-lg object-cover shadow-sm"
+              className="h-9 w-9 object-contain"
             />
             <span className="text-lg font-bold text-ink-900">JustDMs</span>
           </Link>

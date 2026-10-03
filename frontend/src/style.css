@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-[#eef7f8] text-ink-900 antialiased;
+    @apply bg-[#f4f8ff] text-ink-900 antialiased;
   }
 }
 
@@ -18,9 +18,15 @@
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3
-      bg-gradient-to-r from-brand-700 to-cyan-500 hover:from-brand-800 hover:to-cyan-600
+      bg-gradient-to-r from-cyan-400 via-brand-600 to-violet-600
       text-white font-semibold rounded-lg transition shadow-glow
       disabled:opacity-50 disabled:cursor-not-allowed;
+    background-size: 160% 100%;
+    background-position: 100% 0;
+  }
+
+  .btn-primary:hover {
+    background-position: 0 0;
   }
 
   .btn-secondary {
@@ -34,20 +40,24 @@
   }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-brand-700 via-cyan-500 to-coral-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-cyan-500 via-brand-600 to-violet-600 bg-clip-text text-transparent;
   }
 
   .hero-gradient {
     background: radial-gradient(
         ellipse 80% 50% at 50% -20%,
-        rgba(139, 92, 246, 0.15),
+        rgba(34, 211, 238, 0.16),
         transparent
       ),
       radial-gradient(
         ellipse 60% 40% at 80% 60%,
-        rgba(236, 72, 153, 0.08),
+        rgba(124, 58, 237, 0.11),
         transparent
       );
+  }
+
+  .brand-gradient {
+    @apply bg-gradient-to-r from-cyan-400 via-brand-600 to-violet-600;
   }
 
   .legal-content a {

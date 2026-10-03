@@ -33,7 +33,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col bg-ink-900 text-white shadow-2xl transition-transform duration-200 md:translate-x-0 ${
+      className={`fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col bg-gradient-to-b from-[#073d8f] via-[#175be0] to-[#5b35d5] text-white shadow-2xl transition-transform duration-200 md:translate-x-0 ${
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -42,7 +42,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
           <img
             src={logoUrl}
             alt="JustDMs"
-            className="h-9 w-9 rounded-lg object-cover shadow-glow"
+            className="h-9 w-9 object-contain"
           />
           <span className="text-lg font-bold tracking-tight">JustDMs</span>
           <button
@@ -91,7 +91,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
                   isActive
-                    ? "bg-white text-ink-900 font-semibold shadow-sm"
+                    ? "bg-white text-brand-800 font-semibold shadow-sm"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`
               }
