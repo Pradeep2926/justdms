@@ -1,6 +1,6 @@
-import { Instagram, Shield, ArrowRight } from "lucide-react";
+import { BadgeCheck, CheckCircle2, Instagram } from "lucide-react";
 import AuthLayout from "../components/layout/AuthLayout";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { API_BASE_URL } from "../api/api";
 import api from "../api/api";
@@ -10,15 +10,11 @@ export default function ConnectMeta() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const instagramError = searchParams.get("instagramError");
-  const connectionId = searchParams.get("connectionId");
   const switchAccount = searchParams.get("switch") === "1";
-  const { user, loading } = useAuth({ redirectOnFail: true });
-  const [accounts, setAccounts] = useState([]);
-  const [accountError, setAccountError] = useState("");
-  const [selecting, setSelecting] = useState("");
+  const { user, loading, logout } = useAuth({ redirectOnFail: true });
 
   useEffect(() => {
-    if (loading || !user?.email || switchAccount || connectionId || instagramError) return;
+    if (loading || !user?.email || switchAccount || instagramError) return;
 
     api.get(`/instagram/dashboard/${encodeURIComponent(user.email)}`)
       .then(({ data }) => {
@@ -27,18 +23,9 @@ export default function ConnectMeta() {
       .catch(() => {
         // A missing connection is the expected state for first-time users.
       });
-  }, [connectionId, instagramError, loading, navigate, switchAccount, user?.email]);
+  }, [instagramError, loading, navigate, switchAccount, user?.email]);
 
-  useEffect(() => {
-    if (!connectionId || !user?.email) return;
-
-    api.get(`/auth/meta/options/${connectionId}`, {
-      params: { userEmail: user.email },
-    }).then(({ data }) => setAccounts(data))
-      .catch((err) => setAccountError(err.response?.data?.error || err.message));
-  }, [connectionId, user?.email]);
-
-  const connectInstagram = (provider = "meta") => {
+  const connectInstagram = () => {
     if (!user) {
       alert("User not logged in");
       return;
@@ -51,108 +38,63 @@ export default function ConnectMeta() {
       return;
     }
 
-    window.location.href = `${API_BASE_URL}/auth/${provider}?userEmail=${encodeURIComponent(userEmail)}`;
-  };
-
-  const selectAccount = async (pageId) => {
-    try {
-      setSelecting(pageId);
-      setAccountError("");
-      await api.post("/auth/meta/select", {
-        connectionId,
-        userEmail: user.email,
-        pageId,
-      });
-      navigate("/dashboard", { replace: true });
-    } catch (err) {
-      setAccountError(err.response?.data?.error || err.message);
-      setSelecting("");
-    }
+    window.location.href = `${API_BASE_URL}/auth/instagram?userEmail=${encodeURIComponent(userEmail)}`;
   };
 
   return (
     <AuthLayout
-      title="Connect Instagram"
-      subtitle="One last step before you can automate DMs"
+      title="Connect Instagram Account"
+      subtitle="Only a few steps away from automating your DMs"
     >
       <div className="text-center space-y-6">
-        <div className="w-20 h-20 bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400 rounded-3xl flex items-center justify-center mx-auto shadow-lg">
-          <Instagram className="w-10 h-10 text-white" />
-        </div>
-
-        <div className="space-y-2">
-          {instagramError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-              {instagramError}
-            </div>
-          )}
-
-          <p className="text-slate-600 text-sm leading-relaxed">
-            {connectionId
-              ? "Choose which Instagram professional account JustDMs should use."
-              : "Connect your Instagram Business or Creator account through Meta's official OAuth. Use Facebook when the account is linked to a Page, or Instagram for a standalone professional account."}
-          </p>
-          <div className="flex items-center justify-center gap-2 text-xs text-emerald-600">
-            <Shield className="w-4 h-4" />
-            Meta Verified · Secure OAuth
-          </div>
-        </div>
-
-        {accountError && (
+        {instagramError && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-            {accountError}
+            {instagramError}
           </div>
         )}
 
-        {connectionId ? (
-          <div className="space-y-3 text-left">
-            {accounts.map((account) => (
-              <button
-                key={account.page_id}
-                type="button"
-                onClick={() => selectAccount(account.page_id)}
-                disabled={Boolean(selecting)}
-                className="flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-brand-400 hover:bg-brand-50 disabled:opacity-60"
-              >
-                {account.profile_picture_url ? (
-                  <img src={account.profile_picture_url} alt="" className="h-11 w-11 rounded-lg object-cover" />
-                ) : (
-                  <Instagram className="h-8 w-8 text-brand-600" />
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold text-ink-900">@{account.instagram_username || account.instagram_id}</span>
-                  <span className="block truncate text-xs text-slate-500">Facebook Page: {account.page_name}</span>
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-400" />
-              </button>
-            ))}
-            {!accounts.length && !accountError && (
-              <p className="py-3 text-center text-sm text-slate-500">Loading available accounts...</p>
-            )}
+        <div className="rounded-lg border border-blue-100 bg-slate-50 px-5 py-6 text-left">
+          <div className="flex items-center justify-center gap-2 text-blue-600">
+            <BadgeCheck className="h-8 w-8" />
+            <h2 className="text-lg font-bold">Official Instagram API</h2>
           </div>
-        ) : (
-        <div className="space-y-3">
+          <p className="mt-3 text-center text-sm leading-6 text-slate-600">
+            JustDMs uses Instagram&apos;s official authorization process. Your
+            password is entered only on Instagram and is never shared with us.
+          </p>
+          <div className="mt-5 space-y-3 text-sm font-medium text-slate-600">
+            {["Official Instagram OAuth login", "Safe and secure", "You stay in full control"].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <button
-          onClick={() => connectInstagram("meta")}
+          onClick={connectInstagram}
           disabled={loading}
-          className="w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex min-h-14 w-full items-center justify-center gap-3 rounded-lg bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 px-5 text-base font-bold text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Checking account..." : "Continue with Facebook"}
-          <ArrowRight className="w-4 h-4" />
+          <Instagram className="h-5 w-5" />
+          {loading ? "Checking account..." : "Login with Instagram"}
         </button>
+
+        <p className="text-xs leading-5 text-slate-500">
+          By continuing, you agree to our{" "}
+          <a href="/terms" className="font-semibold text-brand-600 hover:underline">Terms of Service</a>
+          {" "}and{" "}
+          <a href="/privacy" className="font-semibold text-brand-600 hover:underline">Privacy Policy</a>.
+        </p>
+
         <button
           type="button"
-          onClick={() => connectInstagram("instagram")}
-          disabled={loading}
-          className="w-full btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={logout}
+          className="text-sm font-semibold text-slate-500 hover:text-slate-900"
         >
-          Connect directly with Instagram
+          Sign out
         </button>
-        <p className="px-2 text-xs leading-5 text-slate-500">
-          Choose Facebook for a Page-linked account such as AlphaxStore. Choose Instagram only when the professional account is not linked to a Facebook Page.
-        </p>
-        </div>
-        )}
       </div>
     </AuthLayout>
   );

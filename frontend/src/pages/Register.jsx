@@ -89,7 +89,7 @@ export default function Register() {
 
     localStorage.removeItem("pendingProfile");
     setLoading(false);
-    navigate("/connect-meta");
+    navigate("/dashboard");
   }
 
   async function handleGoogleSignup() {
@@ -98,7 +98,7 @@ export default function Register() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/connect-meta`,
+        redirectTo: `${window.location.origin}/dashboard`,
         queryParams: {
           access_type: "offline",
           prompt: "consent",

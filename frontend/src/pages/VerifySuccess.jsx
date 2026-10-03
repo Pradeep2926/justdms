@@ -27,7 +27,7 @@ export default function Verify() {
         localStorage.removeItem("pendingProfile");
       }
 
-      navigate("/connect-meta", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
 
     completeLogin();

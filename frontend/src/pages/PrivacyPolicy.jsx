@@ -48,8 +48,8 @@ export default function PrivacyPolicy() {
 
       <Section title="Meta Platform Data">
         <p>
-          We only access Instagram and Facebook Page data that you authorize
-          through Meta Login and that is necessary to provide the service. We do
+          We only access Instagram professional-account data that you authorize
+          through Instagram Login and that is necessary to provide the service. We do
           not sell Meta Platform data. We do not use Meta Platform data for
           unrelated advertising, profiling, or resale.
         </p>

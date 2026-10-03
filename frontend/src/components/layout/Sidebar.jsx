@@ -9,6 +9,7 @@ import {
   X,
   CreditCard,
   Crown,
+  Instagram,
   MessageCircle,
   Package,
 } from "lucide-react";
@@ -92,8 +93,8 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
         )}
       </nav>
 
-      {ig && (
-        <div className="border-t border-slate-100 p-4">
+      <div className="border-t border-slate-100 p-4">
+        {ig ? (
           <div className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5 transition hover:border-brand-200 hover:bg-brand-50/50">
             <img
               src={ig.profile_picture_url}
@@ -110,8 +111,17 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
             </div>
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
           </div>
-        </div>
-      )}
+        ) : (
+          <NavLink
+            to="/connect-meta"
+            onClick={onNavigate}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-3 text-sm font-bold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100"
+          >
+            <Instagram className="h-4 w-4" />
+            Connect Instagram
+          </NavLink>
+        )}
+      </div>
 
       <div className="border-t border-slate-100 p-4">
         <a

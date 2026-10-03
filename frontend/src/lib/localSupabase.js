@@ -169,7 +169,7 @@ export const localSupabase = {
 
       if (!existing) setJson(USERS_KEY, [...users, user]);
       setJson(SESSION_KEY, { userId: user.id });
-      window.location.href = options.redirectTo || "/connect-meta";
+      window.location.href = options.redirectTo || "/dashboard";
 
       return { data: { user: publicUser(user) }, error: null };
     },

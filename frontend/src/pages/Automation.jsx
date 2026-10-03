@@ -4,7 +4,7 @@ import AppLayout from "../components/layout/AppLayout";
 import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
 import api from "../api/api";
-import { CalendarDays, Crown, Filter, Plus, Search, Workflow, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Filter, Instagram, Plus, Search, Workflow, X } from "lucide-react";
 import { useInstagram } from "../hooks/useInstagram";
 import { useSubscription } from "../hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,7 @@ export default function Automation() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("30");
-  const { ig } = useInstagram(user?.email);
+  const { ig, connected, loading: instagramLoading } = useInstagram(user?.email);
 
   const filteredAutomations = automations.filter((automation) => {
     const query = search.trim().toLowerCase();
@@ -64,14 +64,14 @@ export default function Automation() {
   }, []);
 
   useEffect(() => {
-    if (user?.email && isPro) {
+    if (user?.email && isPro && connected) {
       fetchPosts(user.email);
       fetchAutomations(user.email);
-    } else if (user?.email && !subscriptionLoading) {
+    } else if (user?.email && !subscriptionLoading && !instagramLoading) {
       setLoadingPosts(false);
       setLoadingAutomations(false);
     }
-  }, [user, isPro, subscriptionLoading, fetchPosts, fetchAutomations]);
+  }, [user, isPro, connected, instagramLoading, subscriptionLoading, fetchPosts, fetchAutomations]);
 
   const refreshAutomations = async () => {
     if (user?.email) {
@@ -119,7 +119,7 @@ export default function Automation() {
     }
   };
 
-  if (authLoading || subscriptionLoading || loadingPosts || loadingAutomations) {
+  if (authLoading || subscriptionLoading || instagramLoading || loadingPosts || loadingAutomations) {
     return (
       <AppLayout title="Automations" subtitle="Loading...">
         <div className="flex items-center justify-center py-20">
@@ -143,6 +143,27 @@ export default function Automation() {
           <button type="button" onClick={() => navigate("/billing")} className="btn-primary mt-7">
             <Crown className="h-4 w-4" /> View Pro plan
           </button>
+        </section>
+      </AppLayout>
+    );
+  }
+
+  if (!connected) {
+    return (
+      <AppLayout title="Automations" subtitle="Build and manage Instagram workflows">
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+          <div className="rounded-lg border border-dashed border-brand-200 bg-gradient-to-br from-brand-50/70 via-white to-violet-50/70 px-6 py-12 text-center sm:py-16">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400 text-white shadow-md">
+              <Instagram className="h-7 w-7" />
+            </span>
+            <h2 className="mt-5 text-2xl font-bold text-slate-950">Connect Instagram to view automations</h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
+              Connect a professional Instagram account to load posts, create comment replies, and build DM automations.
+            </p>
+            <button type="button" onClick={() => navigate("/connect-meta")} className="btn-primary mt-7">
+              Connect Instagram <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </section>
       </AppLayout>
     );

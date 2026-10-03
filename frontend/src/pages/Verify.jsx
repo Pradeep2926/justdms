@@ -59,7 +59,7 @@ export default function Verify() {
   async function finishVerifiedSession(user) {
     await saveProfile(user);
     window.history.replaceState({}, "", "/verify");
-    navigate("/connect-meta", { replace: true });
+    navigate("/dashboard", { replace: true });
   }
 
   useEffect(() => {
