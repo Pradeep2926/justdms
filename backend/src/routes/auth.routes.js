@@ -10,7 +10,7 @@ const {
 
 const router = express.Router();
 
-const META_GRAPH_VERSION = "v19.0";
+const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v19.0";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 function getMetaConfig() {

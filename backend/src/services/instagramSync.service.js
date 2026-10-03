@@ -2,7 +2,7 @@ const axios = require("axios");
 const { randomUUID } = require("crypto");
 const supabase = require("../lib/supabase");
 
-const META_GRAPH_VERSION = "v19.0";
+const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v19.0";
 const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 const INSTAGRAM_PROFILE_FIELDS =
@@ -73,19 +73,50 @@ async function exchangeInstagramCodeForToken({ code, appId, appSecret, redirectU
     form.toString(),
     { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 20000 }
   );
-  const shortToken = shortResponse.data.access_token;
-  const longToken = await axios.get("https://graph.instagram.com/access_token", {
-    params: {
-      grant_type: "ig_exchange_token",
-      client_secret: appSecret,
-      access_token: shortToken,
-    },
-    timeout: 20000,
-  });
+
+  const shortTokenData = Array.isArray(shortResponse.data?.data)
+    ? shortResponse.data.data[0]
+    : shortResponse.data;
+  const shortToken = shortTokenData?.access_token;
+
+  if (!shortToken) {
+    throw new Error("Instagram did not return an access token.");
+  }
+
+  let longTokenData = null;
+
+  try {
+    const longToken = await axios.get("https://graph.instagram.com/access_token", {
+      params: {
+        grant_type: "ig_exchange_token",
+        client_secret: appSecret,
+        access_token: shortToken,
+      },
+      timeout: 20000,
+    });
+    longTokenData = longToken.data;
+  } catch (error) {
+    const apiError = error.response?.data?.error;
+    const canUseShortToken =
+      apiError?.code === 100 &&
+      /unsupported request\s*-\s*method type:\s*get/i.test(apiError?.message || "");
+
+    if (!canUseShortToken) {
+      throw error;
+    }
+
+    console.warn(
+      "Instagram long-lived token exchange is unavailable; continuing with the valid short-lived token."
+    );
+  }
+
   return {
-    accessToken: longToken.data.access_token || shortToken,
-    expiresIn: longToken.data.expires_in || 60 * 24 * 60 * 60,
-    userId: shortResponse.data.user_id,
+    accessToken: longTokenData?.access_token || shortToken,
+    expiresIn:
+      longTokenData?.expires_in ||
+      shortTokenData?.expires_in ||
+      60 * 60,
+    userId: shortTokenData?.user_id,
   };
 }
 
