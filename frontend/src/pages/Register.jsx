@@ -2,24 +2,17 @@ import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/layout/AuthLayout";
-import { BadgeCheck, ChevronDown } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 
 export default function Register() {
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-
-  function normalizeMobile(value) {
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-    return trimmed.startsWith("+") ? trimmed : `+91 ${trimmed}`;
-  }
 
   async function saveProfile(user, profile) {
     return supabase.from("ProfileUsers").upsert(
@@ -43,7 +36,6 @@ export default function Register() {
     const profile = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      mobile: normalizeMobile(mobile),
       email: email.trim().toLowerCase(),
     };
 
@@ -57,7 +49,6 @@ export default function Register() {
         data: {
           first_name: profile.firstName,
           last_name: profile.lastName,
-          mobile: profile.mobile,
         },
       },
     });
@@ -159,24 +150,6 @@ export default function Register() {
               className="input min-h-[52px] rounded-xl bg-slate-50 text-base font-medium"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <div>
-          <div className="flex min-h-[56px] items-center rounded-xl border border-slate-200 bg-slate-50 px-4 transition focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-100">
-            <span className="mr-2 text-2xl" aria-hidden="true">
-              🇮🇳
-            </span>
-            <ChevronDown className="mr-3 h-4 w-4 text-slate-400" />
-            <span className="mr-2 text-base font-medium text-slate-900">+91</span>
-            <input
-              required
-              inputMode="tel"
-              placeholder="77991 00870"
-              className="min-w-0 flex-1 bg-transparent text-base font-medium text-slate-900 outline-none placeholder:text-slate-400"
-              value={mobile}
-              onChange={(e) => setMobile(e.target.value)}
             />
           </div>
         </div>

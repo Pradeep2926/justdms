@@ -53,13 +53,18 @@ export default function Home() {
             />
             <span className="font-bold text-lg">JustDMs</span>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <a
-              href="#pricing"
-              className="hidden px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 sm:block"
-            >
+          <div className="hidden items-center gap-1 md:flex">
+            <a href="#how-it-works" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-700">
+              How It Works
+            </a>
+            <a href="#features" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-700">
+              Features
+            </a>
+            <a href="#pricing" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-brand-700">
               Pricing
             </a>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/login"
               className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2"
@@ -123,48 +128,41 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="mx-auto mt-12 max-w-xl overflow-hidden rounded-lg border border-brand-200 bg-white shadow-card">
-            <div className="border-b border-slate-100 px-6 py-6 sm:px-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold uppercase text-brand-700">
-                    <Crown className="h-3.5 w-3.5" /> JustDMs Pro
+          <div className="mx-auto mt-12 grid max-w-3xl gap-6 md:grid-cols-2">
+            {[
+              { name: "Monthly", price: "₹199", period: "/month", note: "Flexible monthly billing" },
+              { name: "Yearly", price: "₹1,999", period: "/year", note: "Save ₹389 every year", featured: true },
+            ].map((plan) => (
+              <div key={plan.name} className={`relative flex flex-col rounded-lg border bg-white p-7 shadow-card ${plan.featured ? "border-violet-300 ring-2 ring-violet-100" : "border-brand-200"}`}>
+                {plan.featured && (
+                  <span className="absolute right-5 top-5 rounded-full bg-violet-50 px-3 py-1 text-xs font-bold uppercase text-violet-700">
+                    Best value
                   </span>
-                  <h3 className="mt-4 text-2xl font-bold">Everything you need to automate Instagram DMs</h3>
+                )}
+                <span className="inline-flex items-center gap-2 text-sm font-bold uppercase text-brand-700">
+                  <Crown className="h-4 w-4" /> JustDMs Pro · {plan.name}
+                </span>
+                <p className="mt-5 text-4xl font-extrabold text-slate-950">
+                  {plan.price}<span className="text-sm font-medium text-slate-500">{plan.period}</span>
+                </p>
+                <p className="mt-2 text-sm font-semibold text-emerald-700">{plan.note}</p>
+                <div className="mt-6 space-y-3">
+                  {["All automation features", "Unlimited automations", "Unlimited DMs*", "Analytics and lead collection"].map((feature) => (
+                    <span key={feature} className="flex items-start gap-2 text-sm text-slate-700">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                      {feature}
+                    </span>
+                  ))}
                 </div>
-                <div className="shrink-0 sm:text-right">
-                  <p className="text-3xl font-extrabold text-slate-950">₹199<span className="text-sm font-medium text-slate-500">/month</span></p>
-                  <p className="mt-1 text-sm font-semibold text-emerald-700">₹1,999/year · Best value</p>
-                </div>
+                <Link to="/register" className="btn-primary mt-8 w-full py-3.5">
+                  Choose {plan.name} <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
-            </div>
-
-            <div className="px-6 py-6 sm:px-8">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  "Comment-to-DM automation",
-                  "Keyword triggers",
-                  "Automatic comment replies",
-                  "DM automation and link delivery",
-                  "Follow-gate flows",
-                  "Lead collection and analytics",
-                  "Unlimited automations",
-                  "Unlimited DMs*",
-                ].map((feature) => (
-                  <span key={feature} className="flex items-start gap-2 text-sm text-slate-700">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                    {feature}
-                  </span>
-                ))}
-              </div>
-              <Link to="/register" className="btn-primary mt-8 w-full py-3.5">
-                Create your account <ArrowRight className="h-4 w-4" />
-              </Link>
-              <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-                *Unlimited DMs are subject to Instagram/Meta API limits and fair usage. Prices include applicable taxes only where stated at checkout.
-              </p>
-            </div>
+            ))}
           </div>
+          <p className="mt-5 text-center text-xs leading-5 text-slate-500">
+            *Unlimited DMs are subject to Instagram/Meta API limits and fair usage. Prices include applicable taxes only where stated at checkout.
+          </p>
         </div>
       </section>
 
@@ -186,7 +184,7 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6">
+      <section id="features" className="scroll-mt-20 py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-brand-600 font-semibold text-sm uppercase tracking-wide">
@@ -217,7 +215,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section className="py-24 px-6 bg-slate-50">
+      <section id="how-it-works" className="scroll-mt-20 py-24 px-6 bg-slate-50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <p className="text-brand-600 font-semibold text-sm uppercase tracking-wide">

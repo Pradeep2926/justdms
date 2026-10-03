@@ -143,7 +143,8 @@ export default function AutomationBuilder({
   );
 
   const triggerValue = anyKeyword ? "*" : keywords.join(",");
-  const publicReply = commentReplies.join(REPLY_SEPARATOR);
+  const validCommentReplies = commentReplies.filter((reply) => reply.trim());
+  const publicReply = validCommentReplies.join(REPLY_SEPARATOR);
   const canSave =
     automationName.trim() &&
     triggerType === "comment" &&
@@ -610,7 +611,7 @@ function RepliesModal({ replies, setReplies, onClose }) {
   const updateReply = (index, value) => {
     const next = [...currentReplies];
     next[index] = value;
-    setReplies(next.filter((reply) => reply.trim()));
+    setReplies(next);
   };
 
   const removeReply = (index) => {
@@ -624,7 +625,7 @@ function RepliesModal({ replies, setReplies, onClose }) {
       </p>
       <div className="space-y-4">
         {currentReplies.map((reply, index) => (
-          <div key={`${reply}-${index}`} className="flex items-center gap-4 border-b border-slate-100 pb-4">
+          <div key={index} className="flex items-center gap-4 border-b border-slate-100 pb-4">
             <span className="h-3 w-3 rounded-full bg-slate-300" />
             <input
               className="input text-lg"
