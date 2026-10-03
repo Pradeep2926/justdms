@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import logoUrl from "../../assets/justdms-logo.png";
 
-export default function AuthLayout({ children, title, subtitle }) {
+export default function AuthLayout({ children, title, subtitle, hideHeader = false }) {
   return (
     <div className="min-h-screen flex">
       {/* Brand panel */}
@@ -64,11 +64,15 @@ export default function AuthLayout({ children, title, subtitle }) {
           </div>
 
           <div className="card p-8">
-            <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-            {subtitle && (
-              <p className="text-slate-500 text-sm mt-1 mb-6">{subtitle}</p>
+            {!hideHeader && (
+              <>
+                <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+                {subtitle && (
+                  <p className="text-slate-500 text-sm mt-1 mb-6">{subtitle}</p>
+                )}
+                {!subtitle && <div className="mb-6" />}
+              </>
             )}
-            {!subtitle && <div className="mb-6" />}
             {children}
           </div>
         </div>

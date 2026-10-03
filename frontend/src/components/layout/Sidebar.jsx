@@ -8,6 +8,7 @@ import {
   LogOut,
   Plus,
   X,
+  CreditCard,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
@@ -17,7 +18,8 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: Activity, label: "Dashboard" },
   { to: "/automation", icon: Zap, label: "Automations" },
   { to: "/dashboard", icon: Users, label: "Analytics", disabled: true },
-  { to: "/dashboard", icon: Settings, label: "Settings", disabled: true },
+  { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/billing", icon: CreditCard, label: "Billing" },
 ];
 
 export default function Sidebar({ mobileOpen = false, onNavigate }) {
@@ -107,7 +109,6 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">@{ig.username}</p>
-              <p className="text-xs text-brand-200">Connected</p>
             </div>
             <ChevronDown className="w-4 h-4 text-white/45 shrink-0" />
           </div>

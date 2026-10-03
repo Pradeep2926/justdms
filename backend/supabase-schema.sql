@@ -35,6 +35,41 @@ create table if not exists instagram_accounts (
 alter table instagram_accounts
   add column if not exists auth_provider text default 'facebook';
 
+create table if not exists subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  user_email text unique not null,
+  plan text not null default 'pro',
+  billing_cycle text check (billing_cycle in ('monthly', 'yearly')),
+  amount_paise integer,
+  currency text not null default 'INR',
+  status text not null default 'inactive',
+  razorpay_order_id text,
+  razorpay_payment_id text,
+  razorpay_plan_id text,
+  razorpay_subscription_id text,
+  razorpay_customer_id text,
+  current_start timestamptz,
+  current_end timestamptz,
+  cancel_at_period_end boolean default false,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table subscriptions
+  add column if not exists razorpay_plan_id text,
+  add column if not exists razorpay_subscription_id text,
+  add column if not exists razorpay_customer_id text,
+  add column if not exists current_start timestamptz,
+  add column if not exists current_end timestamptz,
+  add column if not exists cancel_at_period_end boolean default false;
+
+create unique index if not exists subscriptions_razorpay_id_idx
+  on subscriptions(razorpay_subscription_id)
+  where razorpay_subscription_id is not null;
+
 create table if not exists pending_meta_connections (
   id uuid primary key default gen_random_uuid(),
   user_email text not null,
@@ -102,6 +137,7 @@ create table if not exists automations (
   media_id text references instagram_media(id) on delete cascade,
   trigger_type text default 'keyword',
   trigger_value text not null,
+  retrigger_enabled boolean default false,
   message text not null,
   public_reply text,
   opening_dm_enabled boolean default true,
@@ -124,6 +160,7 @@ create table if not exists automations (
 alter table automations
   add column if not exists name text,
   add column if not exists user_email text,
+  add column if not exists retrigger_enabled boolean default false,
   add column if not exists public_reply text,
   add column if not exists opening_dm_enabled boolean default true,
   add column if not exists opening_dm_message text,

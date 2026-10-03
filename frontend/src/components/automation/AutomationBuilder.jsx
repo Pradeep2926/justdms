@@ -1,21 +1,26 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
+  ChevronDown,
   ChevronUp,
   Crown,
   Image,
   Instagram,
   Languages,
+  Link2,
   MessageCircle,
   Pencil,
   Plus,
+  RotateCcw,
+  ShieldCheck,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
 import PostSelector from "./PostSelector";
 import api from "../../api/api";
 
 const REPLY_SEPARATOR = "\n---\n";
-const DEFAULT_KEYWORDS = ["test"];
+const DEFAULT_KEYWORDS = [];
 const DEFAULT_REPLIES = ["Sent check the DM"];
 const DEFAULT_OPENING =
   "Hey {{first_name}} 👋\nThanks for commenting!\nPlease tap the button below to get the details.";
@@ -24,6 +29,36 @@ const DEFAULT_NOT_FOLLOWING =
   "Oops! It looks like you’re not following us yet 👀\n\nThis resource is available only to our followers.\n\nPlease visit our profile, follow us, and then tap ‘I’m Following’ below.";
 const DEFAULT_STILL_NOT_FOLLOWING =
   "It still looks like you haven’t followed yet 😊\nPlease follow the profile first, then tap ‘I’m Following’ again.";
+const TRIGGER_OPTIONS = [
+  {
+    value: "comment",
+    title: "User comments on your post or reel",
+    description: "Reply publicly, then send the DM flow.",
+    icon: "instagram",
+    available: true,
+  },
+  {
+    value: "dm",
+    title: "User DMs to you",
+    description: "Start a flow from inbound Instagram DMs.",
+    icon: "message",
+    available: false,
+  },
+  {
+    value: "live",
+    title: "User comments on your LIVE",
+    description: "Run automations during live sessions.",
+    icon: "instagram",
+    available: false,
+  },
+  {
+    value: "story",
+    title: "User replies to your stories",
+    description: "Start flows from story replies.",
+    icon: "instagram",
+    available: false,
+  },
+];
 
 export default function AutomationBuilder({
   user,
@@ -33,6 +68,15 @@ export default function AutomationBuilder({
   onCancel,
 }) {
   const editing = Boolean(initialAutomation?.id);
+  const [automationName, setAutomationName] = useState(
+    initialAutomation?.name || ""
+  );
+  const [triggerType, setTriggerType] = useState("comment");
+  const [retriggering, setRetriggering] = useState(false);
+  const [retriggerResult, setRetriggerResult] = useState(null);
+  const [isActive, setIsActive] = useState(
+    initialAutomation?.is_active !== false
+  );
   const [selectedPost, setSelectedPost] = useState(
     initialAutomation?.media_id || ""
   );
@@ -45,7 +89,18 @@ export default function AutomationBuilder({
   const [commentReplies, setCommentReplies] = useState(() =>
     splitReplies(initialAutomation?.public_reply)
   );
-  const [openingEnabled, setOpeningEnabled] = useState(true);
+  const [openingEnabled, setOpeningEnabled] = useState(
+    initialAutomation?.opening_dm_enabled !== false
+  );
+  const toggleOpeningEnabled = () => {
+    setOpeningEnabled((current) => {
+      const next = !current;
+      if (!next) {
+        setFollowRequired(false);
+      }
+      return next;
+    });
+  };
   const [openingMessage, setOpeningMessage] = useState(
     initialAutomation?.opening_dm_message || DEFAULT_OPENING
   );
@@ -62,7 +117,9 @@ export default function AutomationBuilder({
     initialAutomation?.resource_button_label || "Open Details"
   );
   const [followRequired, setFollowRequired] = useState(
-    initialAutomation?.follow_required ?? true
+    initialAutomation?.opening_dm_enabled === false
+      ? false
+      : initialAutomation?.follow_required ?? true
   );
   const [notFollowingMessage, setNotFollowingMessage] = useState(
     initialAutomation?.not_following_message || DEFAULT_NOT_FOLLOWING
@@ -87,15 +144,22 @@ export default function AutomationBuilder({
 
   const triggerValue = anyKeyword ? "*" : keywords.join(",");
   const publicReply = commentReplies.join(REPLY_SEPARATOR);
-  const canSave = selectedPost && triggerValue && publicReply.trim();
-
+  const canSave =
+    automationName.trim() &&
+    triggerType === "comment" &&
+    selectedPost &&
+    triggerValue &&
+    publicReply.trim();
   const payload = {
+    name: automationName.trim(),
     user_id: user?.id,
     user_email: user?.email,
     media_id: selectedPost,
     trigger_value: triggerValue,
+    retrigger_enabled: false,
     message: [openingMessage, successMessage, resourceUrl].filter(Boolean).join("\n\n"),
     public_reply: publicReply,
+    opening_dm_enabled: openingEnabled,
     opening_dm_message: openingEnabled ? openingMessage : "",
     opening_dm_button_text: openingButtonText,
     follow_required: followRequired,
@@ -107,11 +171,12 @@ export default function AutomationBuilder({
     resource_type: "link",
     resource_url: resourceUrl,
     resource_button_label: resourceButtonLabel,
+    is_active: isActive,
   };
 
   const saveAutomation = async () => {
     if (!canSave) {
-      alert("Select a post, add a keyword, and add at least one comment reply.");
+      alert("Add a name, select a post, add a keyword, and add at least one comment reply.");
       return;
     }
 
@@ -130,93 +195,174 @@ export default function AutomationBuilder({
     }
   };
 
+  const retriggerMissedComments = async () => {
+    if (!editing) {
+      setRetriggerResult({
+        tone: "info",
+        message: "Create the automation first, then use Re-Trigger to check missed comments.",
+      });
+      return;
+    }
+
+    try {
+      setRetriggering(true);
+      setRetriggerResult(null);
+      const { data } = await api.post(
+        `/webhook/retrigger/${initialAutomation.id}`,
+        { userEmail: user?.email }
+      );
+      setRetriggerResult({
+        tone: data.failed ? "warning" : "success",
+        message: `Checked ${data.checked} comments. Responded to ${data.processed} missed comments, skipped ${data.already_handled} already handled comments${data.failed ? `, and ${data.failed} could not be processed` : ""}.`,
+      });
+    } catch (err) {
+      setRetriggerResult({
+        tone: "error",
+        message:
+          err.response?.data?.error ||
+          err.message ||
+          "Failed to check missed comments.",
+      });
+    } finally {
+      setRetriggering(false);
+    }
+  };
+
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="flex items-center gap-4 border-b border-slate-100 px-8 py-5">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 via-amber-400 to-purple-600 text-white">
-          <Instagram className="h-7 w-7" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-bold text-slate-950">
-            User Comments on your post or reel
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-slate-100 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+          >
+            <ChevronUp className="h-5 w-5 -rotate-90" />
+            <span className="hidden sm:inline">Back</span>
+          </button>
+          <span className="hidden h-7 w-px bg-slate-200 sm:block" />
+          <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-bold text-pink-600">
+            Instagram
+          </span>
+          <h2 className="truncate text-lg font-bold text-slate-950 sm:text-xl">
+            {automationName.trim() || (editing ? "Edit Automation" : "Create Automation")}
           </h2>
-          <p className="text-sm text-slate-500">
-            {editing ? "Edit this comment-to-DM automation." : "Create a new comment-to-DM automation."}
-          </p>
         </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-lg p-2 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-          title="Close builder"
-        >
-          <X className="h-6 w-6" />
-        </button>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+          <button
+            type="button"
+            onClick={retriggerMissedComments}
+            disabled={retriggering}
+            title="Check the selected post for comments this automation missed"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-700 transition hover:border-brand-400 hover:bg-brand-100 disabled:cursor-wait disabled:opacity-60"
+          >
+            <RotateCcw className={`h-4 w-4 ${retriggering ? "animate-spin" : ""}`} />
+            {retriggering ? "Checking..." : "Re-Trigger"}
+          </button>
+          <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4">
+            <span className="text-sm font-bold text-slate-700">Status</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isActive}
+              aria-label="Automation status"
+              onClick={() => setIsActive((current) => !current)}
+              className={`relative h-7 w-12 rounded-full transition ${isActive ? "bg-emerald-500" : "bg-slate-300"}`}
+            >
+              <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition ${isActive ? "left-6" : "left-1"}`} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={saveAutomation}
+            disabled={saving || !canSave}
+            className="btn-primary col-span-2 min-h-11 justify-center sm:col-span-1"
+          >
+            {saving ? "Saving..." : editing ? "Save Changes" : "Create Automation"}
+          </button>
+        </div>
       </div>
 
-      <div className="space-y-9 px-8 py-8">
-        <BuilderSection title="Which Post or Reel do you want to use?">
-          <button
-            type="button"
+      {retriggerResult && (
+        <div
+          role="status"
+          className={`mx-5 mt-5 rounded-lg border px-4 py-3 text-sm font-medium sm:mx-8 ${
+            retriggerResult.tone === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : retriggerResult.tone === "error"
+                ? "border-red-200 bg-red-50 text-red-800"
+                : retriggerResult.tone === "warning"
+                  ? "border-amber-200 bg-amber-50 text-amber-800"
+                  : "border-sky-200 bg-sky-50 text-sky-800"
+          }`}
+        >
+          {retriggerResult.message}
+        </div>
+      )}
+
+      <div className="space-y-8 px-5 py-6 sm:px-8 sm:py-8">
+        <BuilderSection step="1" title="Name your automation">
+          <label className="block">
+            <span className="mb-2 block text-sm font-bold text-slate-700">
+              Name
+            </span>
+            <input
+              className="input text-lg"
+              value={automationName}
+              onChange={(event) => setAutomationName(event.target.value)}
+              placeholder="Example: Accenture referral link"
+            />
+          </label>
+        </BuilderSection>
+
+        <BuilderSection step="2" title="Select trigger">
+          <TriggerDropdown value={triggerType} onChange={setTriggerType} />
+        </BuilderSection>
+
+        <BuilderSection step="3" title="Select post">
+          <SetupActionCard
+            icon={<Image className="h-7 w-7" />}
+            title={selectedPost ? "Post or Reel selected" : "Select Post or Reel"}
+            description={
+              selectedPostData?.caption ||
+              "Pick the Instagram media that should listen for comments."
+            }
+            actionLabel={selectedPost ? "Change" : "Select"}
+            imageUrl={selectedPostData?.thumbnail_url || selectedPostData?.media_url}
+            complete={Boolean(selectedPost)}
             onClick={() => setModal("post")}
-            className="flex min-h-[150px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white text-center transition hover:border-brand-300 hover:bg-brand-50/40"
-          >
-            {selectedPostData?.media_url || selectedPostData?.thumbnail_url ? (
-              <img
-                src={selectedPostData.thumbnail_url || selectedPostData.media_url}
-                alt=""
-                className="mb-4 h-20 w-20 rounded-lg object-cover"
-              />
-            ) : (
-              <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-                <Image className="h-8 w-8" />
-              </span>
-            )}
-            <span className="text-lg font-semibold text-slate-500">
-              {selectedPost ? "Post or Reel Selected" : "Select Post or Reel"}
-            </span>
-          </button>
+          />
         </BuilderSection>
 
-        <BuilderSection title="What keywords will start your automation?">
-          <button
-            type="button"
+        <BuilderSection step="4" title="Select keyword">
+          <SetupActionCard
+            icon={<Languages className="h-7 w-7" />}
+            title={anyKeyword ? "Any keyword" : keywords.length ? keywords.join(", ") : "Setup Keywords"}
+            description="Comments matching these words will start the automation."
+            actionLabel="Edit"
+            complete={Boolean(triggerValue)}
             onClick={() => setModal("keywords")}
-            className="flex min-h-[150px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white text-center transition hover:border-brand-300 hover:bg-brand-50/40"
-          >
-            <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-              <Languages className="h-8 w-8" />
-            </span>
-            <span className="text-lg font-semibold text-slate-500">
-              {anyKeyword
-                ? "Any keyword"
-                : keywords.length
-                  ? keywords.join(", ")
-                  : "Setup Keywords"}
-            </span>
-          </button>
+          />
         </BuilderSection>
 
-        <BuilderSection title="What do you want to reply to those comments?">
-          <button
-            type="button"
+        <BuilderSection step="5" title="Reply to the comment">
+          <SetupActionCard
+            icon={<MessageCircle className="h-7 w-7" />}
+            title={
+              commentReplies.length
+                ? `${commentReplies.length} public ${commentReplies.length === 1 ? "reply" : "replies"}`
+                : "Setup Comment Replies"
+            }
+            description={commentReplies[0] || "Keep this short, like: Sent, check your DM."}
+            actionLabel="Edit"
+            complete={Boolean(publicReply.trim())}
             onClick={() => setModal("replies")}
-            className="flex min-h-[150px] w-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-white text-center transition hover:border-brand-300 hover:bg-brand-50/40"
-          >
-            <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-              <MessageCircle className="h-8 w-8" />
-            </span>
-            <span className="text-lg font-semibold text-slate-500">
-              {commentReplies.length
-                ? `${commentReplies.length} comment ${commentReplies.length === 1 ? "reply" : "replies"}`
-                : "Setup Comment Replies"}
-            </span>
-          </button>
+          />
         </BuilderSection>
 
         <FlowPreview
           openingEnabled={openingEnabled}
-          setOpeningEnabled={setOpeningEnabled}
+          toggleOpeningEnabled={toggleOpeningEnabled}
           openingMessage={openingMessage}
           setOpeningMessage={setOpeningMessage}
           openingButtonText={openingButtonText}
@@ -239,19 +385,6 @@ export default function AutomationBuilder({
           setStillNotFollowingMessage={setStillNotFollowingMessage}
         />
 
-        <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-6">
-          <button type="button" onClick={onCancel} className="btn-secondary">
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={saveAutomation}
-            disabled={saving || !canSave}
-            className="btn-primary"
-          >
-            {saving ? "Saving..." : editing ? "Save Changes" : "Create Automation"}
-          </button>
-        </div>
       </div>
 
       {modal === "post" && (
@@ -282,12 +415,98 @@ export default function AutomationBuilder({
   );
 }
 
-function BuilderSection({ title, children }) {
+function BuilderSection({ step, title, children }) {
   return (
-    <section>
-      <h3 className="mb-4 text-xl font-bold text-slate-700">{title}</h3>
+    <section className="relative border-l-2 border-slate-100 pl-6 sm:pl-8">
+      <div className="absolute -left-4 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white ring-4 ring-white">
+        {step}
+      </div>
+      <h3 className="mb-4 text-lg font-bold text-slate-800 sm:text-xl">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function TriggerDropdown({ value, onChange }) {
+  const selected =
+    TRIGGER_OPTIONS.find((option) => option.value === value) ||
+    TRIGGER_OPTIONS[0];
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <label className="block">
+        <span className="mb-2 block text-sm font-bold text-slate-700">
+          Trigger type
+        </span>
+        <div className="relative">
+          <select
+            className="input appearance-none pr-12 text-lg font-bold"
+            value={selected.value}
+            onChange={(event) => onChange(event.target.value)}
+          >
+            {TRIGGER_OPTIONS.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+                disabled={!option.available}
+              >
+                {option.title}
+                {option.available ? "" : " - Coming soon"}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+        </div>
+      </label>
+      <div className="mt-4 flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <Zap className="h-4 w-4 text-brand-600" />
+        {selected.description}
+      </div>
+    </div>
+  );
+}
+
+function SetupActionCard({
+  icon,
+  title,
+  description,
+  actionLabel,
+  imageUrl,
+  complete,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:shadow-md sm:p-5"
+    >
+      <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-slate-400">
+        {imageUrl ? (
+          <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          icon
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="min-w-0 truncate text-lg font-bold text-slate-950">
+            {title}
+          </span>
+          {complete && (
+            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+              Done
+            </span>
+          )}
+        </span>
+        <span className="mt-1 line-clamp-2 text-sm font-medium text-slate-500">
+          {description}
+        </span>
+      </span>
+      <span className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-brand-700 transition group-hover:border-brand-200 group-hover:bg-brand-50">
+        {actionLabel}
+      </span>
+    </button>
   );
 }
 
@@ -323,24 +542,40 @@ function KeywordsModal({
       <p className="mb-6 text-lg font-medium leading-relaxed text-slate-500">
         Keywords are not case-sensitive, e.g. "Link" and "link" are recognized as the same.
       </p>
-      <input
-        className="input text-lg"
-        placeholder="Type & Hit Enter to add Keyword"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            addKeyword();
-          }
-        }}
-      />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input
+          className="input text-lg"
+          placeholder="Type keyword, e.g. link"
+          value={draft}
+          disabled={anyKeyword}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              addKeyword();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={addKeyword}
+          disabled={anyKeyword || !draft.trim()}
+          className="btn-secondary justify-center sm:w-32"
+        >
+          Add
+        </button>
+      </div>
       <div className="mt-5 flex items-center justify-between gap-4">
-        <span className="text-lg font-semibold text-slate-950">Any keyword</span>
+        <div>
+          <span className="text-lg font-semibold text-slate-950">Any keyword</span>
+          <p className="text-sm font-medium text-slate-500">
+            Use this when every comment should trigger the flow.
+          </p>
+        </div>
         <Toggle enabled={anyKeyword} onChange={() => setAnyKeyword(!anyKeyword)} />
       </div>
       <div className="mt-5 flex flex-wrap gap-3">
-        {(keywords.length ? keywords : DEFAULT_KEYWORDS).map((keyword) => (
+        {keywords.map((keyword) => (
           <button
             key={keyword}
             type="button"
@@ -351,6 +586,16 @@ function KeywordsModal({
             <X className="h-4 w-4" />
           </button>
         ))}
+        {!anyKeyword && keywords.length === 0 && (
+          <span className="rounded-lg border border-dashed border-slate-200 px-4 py-2 text-sm font-semibold text-slate-400">
+            Add at least one keyword
+          </span>
+        )}
+        {anyKeyword && (
+          <span className="rounded-lg bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
+            Every comment will trigger
+          </span>
+        )}
       </div>
       <button type="button" onClick={onClose} className="btn-primary mt-7 w-full justify-center py-4 text-lg">
         Confirm
@@ -414,7 +659,7 @@ function RepliesModal({ replies, setReplies, onClose }) {
 
 function FlowPreview({
   openingEnabled,
-  setOpeningEnabled,
+  toggleOpeningEnabled,
   openingMessage,
   setOpeningMessage,
   openingButtonText,
@@ -438,13 +683,19 @@ function FlowPreview({
 }) {
   const [addResponseOpen, setAddResponseOpen] = useState(false);
   const [followEditorOpen, setFollowEditorOpen] = useState(false);
+  const responseEditorRef = useRef(null);
 
   const addResponseText = () => {
-    setSuccessMessage((current) =>
-      current.trim()
-        ? `${current.trim()}\n\nAdd another detail here`
-        : DEFAULT_SUCCESS
-    );
+    setSuccessMessage((current) => current.trim() || DEFAULT_SUCCESS);
+    setAddResponseOpen(false);
+    requestAnimationFrame(() => {
+      responseEditorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      responseEditorRef.current?.focus();
+      responseEditorRef.current?.select();
+    });
   };
 
   const clearResponse = () => {
@@ -455,9 +706,21 @@ function FlowPreview({
 
   return (
     <section className="space-y-5">
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div className="flex items-center gap-4 border-b border-slate-100 bg-slate-50 px-6 py-5">
-          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-950 text-white">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
+          <Zap className="h-5 w-5" />
+        </div>
+        <div>
+          <h3 className="text-2xl font-bold text-slate-950">Response Flow</h3>
+          <p className="text-sm font-medium text-slate-500">
+            This is what happens after the public comment reply.
+          </p>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white">
             <MessageCircle className="h-7 w-7" />
           </div>
           <div className="min-w-0 flex-1">
@@ -471,22 +734,30 @@ function FlowPreview({
               First DM before the response flow.
             </p>
           </div>
-          <Toggle enabled={openingEnabled} onChange={() => setOpeningEnabled(!openingEnabled)} />
-          <button type="button" className="rounded-lg border border-slate-200 bg-white p-3 text-slate-500">
-            <ChevronUp className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <Toggle enabled={openingEnabled} onChange={toggleOpeningEnabled} />
+            <button type="button" className="rounded-lg border border-slate-200 bg-white p-3 text-slate-500">
+              <ChevronUp className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-        <div className="px-6 py-10">
-          <MessageCard
-            message={openingMessage}
-            buttonLabel={openingButtonText}
-            onMessageChange={setOpeningMessage}
-            onButtonChange={setOpeningButtonText}
-          />
+        <div className="px-5 py-8 sm:px-6 sm:py-10">
+          {openingEnabled ? (
+            <MessageCard
+              message={openingMessage}
+              buttonLabel={openingButtonText}
+              onMessageChange={setOpeningMessage}
+              onButtonChange={setOpeningButtonText}
+            />
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-semibold text-amber-900">
+              Opening message is off. The response message will be sent immediately after the public comment reply.
+            </div>
+          )}
         </div>
       </div>
 
-      {followRequired && (
+      {openingEnabled && followRequired && (
         <FollowGateCard
           notFollowingMessage={notFollowingMessage}
           visitProfileButtonText={visitProfileButtonText}
@@ -497,24 +768,35 @@ function FlowPreview({
         />
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-slate-100 p-6">
-        <div className="mb-6 flex items-center gap-4">
+      <div className="rounded-lg border border-slate-200 bg-slate-100 p-5 shadow-sm sm:p-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-xl font-bold text-white">
             1
           </div>
-          <h3 className="flex-1 text-xl font-bold text-slate-950">Text Message</h3>
-          <button
-            type="button"
-            onClick={clearResponse}
-            className="rounded-lg p-2 text-red-500 hover:bg-red-50"
-            title="Clear response"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
-          <ChevronUp className="h-5 w-5 text-slate-950" />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-bold text-slate-950">Resource Message</h3>
+            <p className="text-sm font-semibold text-slate-500">
+              Sent after Get Details, or after follow gate passes.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={clearResponse}
+              className="rounded-lg p-2 text-red-500 hover:bg-red-50"
+              title="Clear response"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+            <ChevronUp className="h-5 w-5 text-slate-950" />
+          </div>
         </div>
         <div className="rounded-lg bg-white p-5">
+          <label className="mb-2 block text-sm font-bold text-slate-700">
+            Message
+          </label>
           <textarea
+            ref={responseEditorRef}
             className="input min-h-[90px] resize-none border-dashed text-lg"
             value={successMessage}
             onChange={(event) => setSuccessMessage(event.target.value)}
@@ -524,19 +806,36 @@ function FlowPreview({
             {successMessage.length}/1000
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <input
-              className="input border-dashed"
-              value={resourceUrl}
-              onChange={(event) => setResourceUrl(event.target.value)}
-              placeholder="Resource URL"
-            />
-            <input
-              className="input border-dashed"
-              value={resourceButtonLabel}
-              onChange={(event) => setResourceButtonLabel(event.target.value)}
-              placeholder="Button label"
-            />
+            <label className="block">
+              <span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700">
+                <Link2 className="h-4 w-4" />
+                Resource URL
+              </span>
+              <input
+                className="input border-dashed"
+                value={resourceUrl}
+                onChange={(event) => setResourceUrl(event.target.value)}
+                placeholder="https://..."
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-bold text-slate-700">
+                Button label
+              </span>
+              <input
+                className="input border-dashed"
+                value={resourceButtonLabel}
+                onChange={(event) => setResourceButtonLabel(event.target.value)}
+                placeholder="Open Details"
+              />
+            </label>
           </div>
+          {followRequired && (
+            <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+              <span>This resource is protected by the follow gate.</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -551,16 +850,14 @@ function FlowPreview({
 
       {addResponseOpen && (
         <AddResponseModal
+          openingEnabled={openingEnabled}
           followRequired={followRequired}
           onAddFollowGate={() => {
             setFollowRequired(true);
             setAddResponseOpen(false);
             setFollowEditorOpen(true);
           }}
-          onAddText={() => {
-            addResponseText();
-            setAddResponseOpen(false);
-          }}
+          onAddText={addResponseText}
           onClose={() => setAddResponseOpen(false)}
         />
       )}
@@ -653,26 +950,41 @@ function FollowGateCard({
   );
 }
 
-function AddResponseModal({ followRequired, onAddFollowGate, onAddText, onClose }) {
+function AddResponseModal({
+  openingEnabled,
+  followRequired,
+  onAddFollowGate,
+  onAddText,
+  onClose,
+}) {
+  const followDisabled = followRequired || !openingEnabled;
+
   return (
     <Modal title="Add Response" onClose={onClose}>
       <div className="space-y-4">
+        {!openingEnabled && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-base font-semibold text-amber-900">
+            Opening message is turned off, so follow gate is unavailable. Turn opening message on to use Get Details and follow check.
+          </div>
+        )}
         <ResponseOption
           title="Ask For Follow"
           description={
-            followRequired
+            !openingEnabled
+              ? "Requires Opening Message"
+              : followRequired
               ? "Follow gate is already in this flow"
               : "Request users to follow your account"
           }
           icon={<Crown className="h-6 w-6" />}
           highlighted
-          disabled={followRequired}
+          disabled={followDisabled}
           onClick={onAddFollowGate}
         />
         <ResponseOption
           title="Card Message"
-          description="Send a rich card with image, text and button"
-          onClick={onAddText}
+          description="Coming soon"
+          disabled
         />
         <ResponseOption
           title="Text Message"
@@ -681,8 +993,8 @@ function AddResponseModal({ followRequired, onAddFollowGate, onAddText, onClose 
         />
         <ResponseOption
           title="Image Message"
-          description="Send an uploaded image response"
-          onClick={onAddText}
+          description="Coming soon"
+          disabled
         />
       </div>
     </Modal>

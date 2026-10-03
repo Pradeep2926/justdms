@@ -1,5 +1,6 @@
 import {
   Edit3,
+  Instagram,
   MessageSquareText,
   Power,
   Trash2,
@@ -9,6 +10,7 @@ import {
 export default function AutomationList({
   automations = [],
   posts = [],
+  account,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -30,19 +32,23 @@ export default function AutomationList({
   }
 
   return (
-    <div className="space-y-4 md:space-y-0 md:overflow-hidden md:rounded-lg md:border md:border-slate-200 md:bg-white">
-      <div className="hidden grid-cols-[96px_1.4fr_120px_150px_150px_180px] items-center border-b border-slate-100 bg-slate-50 px-8 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 md:grid">
+    <div className="space-y-4 lg:space-y-0 lg:overflow-hidden lg:rounded-lg lg:border lg:border-slate-200 lg:bg-white lg:shadow-sm">
+      <div className="hidden grid-cols-[76px_minmax(210px,1.5fr)_120px_120px_130px_150px_112px] items-center border-b border-slate-100 bg-slate-50/80 px-6 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 lg:grid">
         <span>Image</span>
         <span>Name</span>
-        <span>Status</span>
-        <span>Created</span>
+        <span>Messages sent</span>
+        <span>Total clicks</span>
+        <span>Followers gained</span>
         <span>Last modified</span>
         <span className="text-right">Actions</span>
       </div>
 
       {automations.map((automation) => {
         const post = postById.get(automation.media_id);
-        const title = automation.name || automation.trigger_value || "Untitled";
+        const title =
+          automation.name ||
+          (automation.trigger_value === "*" ? "Untitled automation" : automation.trigger_value) ||
+          "Untitled automation";
         const active = automation.is_active !== false;
         const replies = String(automation.public_reply || "")
           .split("\n---\n")
@@ -55,6 +61,7 @@ export default function AutomationList({
             automation={automation}
             active={active}
             post={post}
+            account={account}
             replies={replies}
             title={title}
             onEdit={onEdit}
@@ -71,6 +78,7 @@ function AutomationRow({
   automation,
   active,
   post,
+  account,
   replies,
   title,
   onEdit,
@@ -82,7 +90,7 @@ function AutomationRow({
 
   return (
     <>
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:hidden">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:hidden">
         <div className="flex gap-3">
           {image}
           <div className="min-w-0 flex-1">
@@ -93,27 +101,20 @@ function AutomationRow({
               {status}
             </div>
             <p className="text-sm text-slate-500">
-              Replies: {replies.length ? replies.join(" / ") : "Sent check the DM"}
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Resource locked until follower check
+              <Instagram className="mr-1 inline h-4 w-4 text-pink-500" />
+              @{account?.username || "Instagram"}
             </p>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-500">
-          <span>Created: {formatDate(automation.created_at)}</span>
-          <span>Updated: {formatDate(automation.updated_at || automation.created_at)}</span>
+        <div className="mt-4 grid grid-cols-3 gap-2 rounded-lg bg-slate-50 p-3 text-center">
+          <Metric label="Messages" value={automation.messages_sent || 0} />
+          <Metric label="Clicks" value={automation.total_clicks || 0} />
+          <Metric label="Followers" value={automation.followers_gained || 0} />
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            className="rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700"
-            title="View leads data"
-          >
-            Leads Data
-          </button>
+          <span className="text-xs text-slate-500">Updated {formatRelativeDate(automation.updated_at || automation.created_at)}</span>
           <div className="flex items-center gap-1">
             <ActionButtons
               automation={automation}
@@ -126,38 +127,27 @@ function AutomationRow({
         </div>
       </div>
 
-      <div className="hidden grid-cols-[96px_1.4fr_120px_150px_150px_180px] items-center border-b border-slate-100 px-8 py-4 last:border-b-0 md:grid">
+      <div className="hidden grid-cols-[76px_minmax(210px,1.5fr)_120px_120px_130px_150px_112px] items-center border-b border-slate-100 px-6 py-5 transition hover:bg-slate-50/60 last:border-b-0 lg:grid">
         {image}
 
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-slate-900">
             {title}
           </p>
-          <p className="mt-1 truncate text-sm text-slate-500">
-            Replies: {replies.length ? replies.join(" / ") : "Sent check the DM"}
-          </p>
-          <p className="mt-1 truncate text-xs text-slate-400">
-            Resource locked until follower check
+          <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-slate-500">
+            <Instagram className="h-4 w-4 shrink-0 text-pink-500" />
+            @{account?.username || "Instagram"}
+            <span className="text-slate-300">|</span>
+            {status}
           </p>
         </div>
 
-        {status}
+        <MetricValue value={automation.messages_sent || 0} />
+        <MetricValue value={automation.total_clicks || 0} />
+        <MetricValue value={automation.followers_gained || 0} />
+        <span className="text-sm font-medium text-slate-500">{formatRelativeDate(automation.updated_at || automation.created_at)}</span>
 
-        <span className="text-sm font-medium text-slate-500">
-          {formatDate(automation.created_at)}
-        </span>
-        <span className="text-sm font-medium text-slate-500">
-          {formatDate(automation.updated_at || automation.created_at)}
-        </span>
-
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            className="rounded-lg bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-700"
-            title="View leads data"
-          >
-            Leads Data
-          </button>
+        <div className="flex items-center justify-end gap-1">
           <ActionButtons
             automation={automation}
             active={active}
@@ -169,6 +159,14 @@ function AutomationRow({
       </div>
     </>
   );
+}
+
+function Metric({ label, value }) {
+  return <div><p className="text-base font-bold text-slate-900">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>;
+}
+
+function MetricValue({ value }) {
+  return <span className="text-center text-base font-semibold text-slate-600">{value}</span>;
 }
 
 function AutomationImage({ post }) {
@@ -251,4 +249,14 @@ function formatDate(value) {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatRelativeDate(value) {
+  if (!value) return "-";
+  const elapsed = Date.now() - new Date(value).getTime();
+  const hours = Math.max(1, Math.floor(elapsed / 3600000));
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  return formatDate(value);
 }

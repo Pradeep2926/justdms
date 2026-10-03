@@ -20,7 +20,11 @@ export default function Login() {
     });
 
     if (error) {
-      alert(error.message);
+      if (error.message?.toLowerCase().includes("email not confirmed")) {
+        navigate(`/verify?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+      } else {
+        alert(error.message);
+      }
       setLoading(false);
       return;
     }
@@ -50,14 +54,14 @@ export default function Login() {
     }
 
     setLoading(false);
-    navigate("/connect-meta");
+    navigate("/dashboard");
   }
 
   async function handleGoogleLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/connect-meta`,
+        redirectTo: `${window.location.origin}/dashboard`,
       },
     });
 
@@ -110,6 +114,11 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <div className="mt-2 text-right">
+            <Link to="/forgot-password" className="text-sm font-semibold text-brand-600 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <button type="submit" disabled={loading} className="w-full btn-primary">

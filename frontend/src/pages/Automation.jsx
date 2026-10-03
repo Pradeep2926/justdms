@@ -4,7 +4,8 @@ import AppLayout from "../components/layout/AppLayout";
 import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
 import api from "../api/api";
-import { Plus, X } from "lucide-react";
+import { CalendarDays, Filter, Plus, Search, Workflow, X } from "lucide-react";
+import { useInstagram } from "../hooks/useInstagram";
 
 export default function Automation() {
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
@@ -14,6 +15,27 @@ export default function Automation() {
   const [loadingAutomations, setLoadingAutomations] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("30");
+  const { ig } = useInstagram(user?.email);
+
+  const filteredAutomations = automations.filter((automation) => {
+    const query = search.trim().toLowerCase();
+    const matchesSearch =
+      !query ||
+      String(automation.name || "").toLowerCase().includes(query) ||
+      String(automation.trigger_value || "").toLowerCase().includes(query);
+    const active = automation.is_active !== false;
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" ? active : !active);
+    const changedAt = new Date(automation.updated_at || automation.created_at || 0);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - Number(dateFilter));
+    const matchesDate = !dateFilter || changedAt >= cutoff;
+    return matchesSearch && matchesStatus && matchesDate;
+  });
 
   const fetchPosts = useCallback(async (email) => {
     try {
@@ -103,10 +125,19 @@ export default function Automation() {
   return (
     <AppLayout
       title="Automations"
-      subtitle="Comment → DM workflows powered by Meta APIs"
+      subtitle={ig ? `Manage comment-to-DM flows for @${ig.username}` : "Comment → DM workflows powered by Meta APIs"}
     >
       <div className="space-y-6">
-        <div className="flex items-center justify-end">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-slate-900 shadow-sm ring-1 ring-slate-200">
+              <Workflow className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-semibold text-slate-900">{automations.length} workflows</p>
+              <p className="text-sm text-slate-500">Search, pause, edit, or create an automation.</p>
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -146,9 +177,49 @@ export default function Automation() {
           </div>
         )}
 
+        {!showBuilder && (
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px_180px]">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input h-12 pl-12"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search automations"
+              />
+            </label>
+            <label className="relative block">
+              <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <select
+                className="input h-12 appearance-none pl-11"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+              </select>
+            </label>
+            <label className="relative block">
+              <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <select
+                className="input h-12 appearance-none pl-11"
+                value={dateFilter}
+                onChange={(event) => setDateFilter(event.target.value)}
+              >
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last year</option>
+                <option value="">All time</option>
+              </select>
+            </label>
+          </div>
+        )}
+
         <AutomationList
-          automations={automations}
+          automations={filteredAutomations}
           posts={posts}
+          account={ig}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onToggleStatus={handleToggleStatus}

@@ -11,10 +11,23 @@ export default function ConnectMeta() {
   const navigate = useNavigate();
   const instagramError = searchParams.get("instagramError");
   const connectionId = searchParams.get("connectionId");
+  const switchAccount = searchParams.get("switch") === "1";
   const { user, loading } = useAuth({ redirectOnFail: true });
   const [accounts, setAccounts] = useState([]);
   const [accountError, setAccountError] = useState("");
   const [selecting, setSelecting] = useState("");
+
+  useEffect(() => {
+    if (loading || !user?.email || switchAccount || connectionId || instagramError) return;
+
+    api.get(`/instagram/dashboard/${encodeURIComponent(user.email)}`)
+      .then(({ data }) => {
+        if (data?.connected) navigate("/dashboard", { replace: true });
+      })
+      .catch(() => {
+        // A missing connection is the expected state for first-time users.
+      });
+  }, [connectionId, instagramError, loading, navigate, switchAccount, user?.email]);
 
   useEffect(() => {
     if (!connectionId || !user?.email) return;

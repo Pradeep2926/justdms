@@ -6,6 +6,7 @@ const router = express.Router();
 const AUTOMATION_UPDATE_FIELDS = [
   "name",
   "media_id",
+  "retrigger_enabled",
   "trigger_value",
   "message",
   "public_reply",
@@ -29,6 +30,90 @@ function isMissingColumnError(error, column) {
     .toLowerCase()
     .includes(`'${column}'`);
 }
+
+router.get("/metrics/:userEmail", async (req, res) => {
+  try {
+    const { userEmail } = req.params;
+    const days = Number(req.query.days);
+
+    if (!userEmail) {
+      return res.status(400).json({ error: "Missing userEmail" });
+    }
+
+    const { data: automations = [], error: automationsError } = await supabase
+      .from("automations")
+      .select("id,is_active")
+      .eq("user_email", userEmail);
+
+    if (automationsError) throw automationsError;
+
+    const automationIds = automations.map((automation) => automation.id);
+    const emptyMetrics = {
+      messages_sent: 0,
+      total_clicks: 0,
+      comments_engaged: 0,
+      followers_verified: 0,
+      active_automations: automations.filter(
+        (automation) => automation.is_active !== false
+      ).length,
+    };
+
+    if (automationIds.length === 0) {
+      return res.json(emptyMetrics);
+    }
+
+    const { data: allEvents = [], error: eventsError } = await supabase
+      .from("automation_events")
+      .select("automation_id,event_type,status,instagram_sender_id,comment_id,created_at");
+    if (eventsError) throw eventsError;
+
+    const automationIdSet = new Set(automationIds);
+    const since = Number.isFinite(days) && days > 0
+      ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+      : null;
+    const events = allEvents.filter((event) => {
+      if (!automationIdSet.has(event.automation_id)) return false;
+      if (!since) return true;
+      return new Date(event.created_at) >= since;
+    });
+
+    const messageTypes = new Set([
+      "opening_dm_sent",
+      "follow_prompt_sent",
+      "resource_sent",
+    ]);
+    const engagedComments = new Set();
+    const verifiedFollowers = new Set();
+    const metrics = { ...emptyMetrics };
+
+    events.forEach((event) => {
+      if (event.status === "sent" && messageTypes.has(event.event_type)) {
+        metrics.messages_sent += 1;
+      }
+      if (event.event_type === "button_clicked") {
+        metrics.total_clicks += 1;
+      }
+      if (event.event_type === "comment_received" && event.comment_id) {
+        engagedComments.add(event.comment_id);
+      }
+      if (
+        event.event_type === "follow_check_result" &&
+        event.status === "sent" &&
+        event.instagram_sender_id
+      ) {
+        verifiedFollowers.add(event.instagram_sender_id);
+      }
+    });
+
+    metrics.comments_engaged = engagedComments.size;
+    metrics.followers_verified = verifiedFollowers.size;
+
+    return res.json(metrics);
+  } catch (err) {
+    console.error("Automation metrics fetch error:", err);
+    return res.status(500).json({ error: "Failed to load metrics" });
+  }
+});
 
 router.get("/:userEmail", async (req, res) => {
   try {
@@ -69,12 +154,65 @@ router.get("/:userEmail", async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
+    const ownedAutomations = data.filter(
+      (automation) =>
+        automation.user_email === userEmail ||
+        mediaIds.has(automation.media_id)
+    );
+
+    if (ownedAutomations.length === 0) {
+      return res.json([]);
+    }
+
+    const automationIds = new Set(ownedAutomations.map((automation) => automation.id));
+    const [{ data: events = [], error: eventsError }, { data: interactions = [], error: interactionsError }] =
+      await Promise.all([
+        supabase.from("automation_events").select("automation_id,event_type,status"),
+        supabase.from("automation_interactions").select("automation_id,follow_status"),
+      ]);
+
+    if (eventsError || interactionsError) {
+      console.warn(
+        "Automation metrics unavailable:",
+        eventsError?.message || interactionsError?.message
+      );
+    }
+
+    const metrics = new Map(
+      ownedAutomations.map((automation) => [
+        automation.id,
+        { messages_sent: 0, total_clicks: 0, followers_gained: 0 },
+      ])
+    );
+
+    if (!eventsError) {
+      events.forEach((event) => {
+        if (!automationIds.has(event.automation_id)) return;
+        const metric = metrics.get(event.automation_id);
+        if (event.event_type === "button_clicked") metric.total_clicks += 1;
+        if (
+          event.status === "sent" &&
+          ["opening_dm_sent", "follow_prompt_sent", "resource_sent"].includes(event.event_type)
+        ) {
+          metric.messages_sent += 1;
+        }
+      });
+    }
+
+    if (!interactionsError) {
+      interactions.forEach((interaction) => {
+        if (!automationIds.has(interaction.automation_id)) return;
+        if (interaction.follow_status === "following") {
+          metrics.get(interaction.automation_id).followers_gained += 1;
+        }
+      });
+    }
+
     return res.json(
-      data.filter(
-        (automation) =>
-          automation.user_email === userEmail ||
-          mediaIds.has(automation.media_id)
-      )
+      ownedAutomations.map((automation) => ({
+        ...automation,
+        ...metrics.get(automation.id),
+      }))
     );
   } catch (err) {
     console.error("❌ Automation fetch error:", err);
@@ -96,6 +234,7 @@ router.post("/", async (req, res) => {
       name,
       media_id,
       trigger_value,
+      retrigger_enabled,
       message,
       public_reply,
       opening_dm_enabled,
@@ -110,6 +249,7 @@ router.post("/", async (req, res) => {
       resource_type,
       resource_url,
       resource_button_label,
+      is_active,
     } = req.body;
 
     if (!user_id || !user_email || !media_id || !trigger_value || !message) {
@@ -125,6 +265,7 @@ router.post("/", async (req, res) => {
       media_id,
       trigger_type: "keyword",
       trigger_value,
+      retrigger_enabled: Boolean(retrigger_enabled),
       message,
       public_reply:
         public_reply ||
@@ -153,7 +294,7 @@ router.post("/", async (req, res) => {
       resource_url: resource_url || null,
       resource_button_label:
         resource_button_label || "Open Details",
-      is_active: true,
+      is_active: is_active !== false,
     };
 
     let { data, error } = await supabase
@@ -165,11 +306,13 @@ router.post("/", async (req, res) => {
     if (
       error &&
       (isMissingColumnError(error, "name") ||
-        isMissingColumnError(error, "opening_dm_enabled"))
+        isMissingColumnError(error, "opening_dm_enabled") ||
+        isMissingColumnError(error, "retrigger_enabled"))
     ) {
       const fallbackRecord = { ...automationRecord };
       delete fallbackRecord.name;
       delete fallbackRecord.opening_dm_enabled;
+      delete fallbackRecord.retrigger_enabled;
       const fallback = await supabase
         .from("automations")
         .insert([fallbackRecord])
@@ -225,11 +368,13 @@ router.patch("/:id", async (req, res) => {
     if (
       error &&
       (isMissingColumnError(error, "name") ||
-        isMissingColumnError(error, "opening_dm_enabled"))
+        isMissingColumnError(error, "opening_dm_enabled") ||
+        isMissingColumnError(error, "retrigger_enabled"))
     ) {
       const fallbackUpdates = { ...updates };
       delete fallbackUpdates.name;
       delete fallbackUpdates.opening_dm_enabled;
+      delete fallbackUpdates.retrigger_enabled;
       const fallback = await supabase
         .from("automations")
         .update(fallbackUpdates)

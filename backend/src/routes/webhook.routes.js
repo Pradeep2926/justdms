@@ -915,11 +915,12 @@ async function sendFollowPrompt({ account, automation, interaction }) {
   });
 }
 
-async function processComment({ body, entry, change, value }) {
+async function processComment({ body, entry, change, value, automationOverride = null }) {
   const eventType = change?.field || "comments";
   const commentId = value?.id || value?.comment_id;
   const mediaId = value?.media?.id || value?.media_id;
   const senderId = value?.from?.id || value?.sender_id;
+  let deliveryFailed = false;
 
   console.log("💬 Comment received:", {
     mediaId,
@@ -959,17 +960,22 @@ async function processComment({ body, entry, change, value }) {
   await saveWebhookComment({ mediaId, value });
 
   const commentText = String(value.text).toLowerCase();
-  const { automation, matchedBy } = await findMatchingAutomation({
-    mediaId,
-    commentText,
-  });
+  const overrideMatches =
+    automationOverride?.is_active !== false &&
+    automationOverride?.media_id === mediaId &&
+    automationMatchesComment(automationOverride, commentText);
+  const { automation, matchedBy } = overrideMatches
+    ? { automation: automationOverride, matchedBy: "manual_retrigger" }
+    : automationOverride
+      ? { automation: null, matchedBy: "manual_retrigger" }
+      : await findMatchingAutomation({ mediaId, commentText });
 
   if (!automation) {
     await updateWebhookEvent(webhookEvent?.id, {
       status: "skipped",
       message: `No active automation matched "${value.text}" for media ${mediaId}`,
     });
-    return;
+    return { status: "skipped", reason: "no_matching_automation" };
   }
 
   console.log("⚡ Automation matched:", {
@@ -984,7 +990,7 @@ async function processComment({ body, entry, change, value }) {
       status: "skipped",
       message: "No connected account found for automation",
     });
-    return;
+    return { status: "skipped", reason: "missing_account" };
   }
 
   await updateWebhookEvent(webhookEvent?.id, {
@@ -999,7 +1005,7 @@ async function processComment({ body, entry, change, value }) {
       status: "ignored",
       message: "Comment is from the connected account",
     });
-    return;
+    return { status: "skipped", reason: "own_comment" };
   }
 
   let interaction = await findInteraction({
@@ -1010,6 +1016,7 @@ async function processComment({ body, entry, change, value }) {
 
   const sameUserNewComment =
     interaction?.comment_id && interaction.comment_id !== commentId;
+  const resetFlow = sameUserNewComment;
 
   interaction = await upsertInteraction(interaction, {
     automation_id: automation.id,
@@ -1018,18 +1025,19 @@ async function processComment({ body, entry, change, value }) {
     instagram_username: value.from?.username || null,
     comment_id: commentId,
     media_id: mediaId,
-    current_step: sameUserNewComment
+    current_step: resetFlow
       ? "comment_received"
       : interaction?.current_step || "comment_received",
-    follow_status: interaction?.follow_status || "unknown",
+    follow_status: resetFlow ? "unknown" : interaction?.follow_status || "unknown",
     resource_delivery_status:
-      interaction?.resource_delivery_status || "not_delivered",
-    public_reply_sent_at: sameUserNewComment
+      resetFlow ? "not_delivered" : interaction?.resource_delivery_status || "not_delivered",
+    public_reply_sent_at: resetFlow
       ? null
       : interaction?.public_reply_sent_at || null,
-    opening_dm_sent_at: sameUserNewComment
+    opening_dm_sent_at: resetFlow
       ? null
       : interaction?.opening_dm_sent_at || null,
+    resource_delivered_at: resetFlow ? null : interaction?.resource_delivered_at || null,
     raw_context: { entry_id: entry?.id, comment: value },
   });
 
@@ -1097,6 +1105,7 @@ async function processComment({ body, entry, change, value }) {
         accountId: account.id,
         message: errorMessage,
       });
+      deliveryFailed = true;
       console.warn("⚠️ Public reply failed; continuing to opening DM");
     }
   }
@@ -1121,7 +1130,10 @@ async function processComment({ body, entry, change, value }) {
     } else {
       await sendResource({ account, automation, interaction });
     }
-    return;
+    return {
+      status: deliveryFailed ? "failed" : "processed",
+      commentId,
+    };
   }
 
   if (openingDmEnabled && !interaction.opening_dm_sent_at) {
@@ -1187,8 +1199,14 @@ async function processComment({ body, entry, change, value }) {
         accountId: account.id,
         message: errorMessage,
       });
+      deliveryFailed = true;
     }
   }
+
+  return {
+    status: deliveryFailed ? "failed" : "processed",
+    commentId,
+  };
 }
 
 async function processPostback({ body, messaging }) {
@@ -1418,6 +1436,144 @@ async function processWebhook(body) {
     });
   }
 }
+
+async function fetchCommentsForRetrigger({ account, mediaId, limit = 250 }) {
+  const comments = [];
+  let nextUrl = `${graphUrlFor(account)}/${mediaId}/comments`;
+  let params = {
+    fields: "id,text,username,from{id,username},timestamp,parent_id",
+    limit: 100,
+    access_token: tokenFor(account),
+  };
+
+  while (nextUrl && comments.length < limit) {
+    const response = await axios.get(nextUrl, { params, timeout: 15000 });
+    comments.push(...(response.data?.data || []));
+    nextUrl = response.data?.paging?.next || null;
+    params = undefined;
+  }
+
+  return comments.slice(0, limit);
+}
+
+router.post("/retrigger/:automationId", async (req, res) => {
+  try {
+    const { automationId } = req.params;
+    const userEmail = String(req.body?.userEmail || "").trim().toLowerCase();
+    const { data: automation, error: automationError } = await supabase
+      .from("automations")
+      .select("*")
+      .eq("id", automationId)
+      .maybeSingle();
+
+    if (automationError) throw automationError;
+    if (!automation) {
+      return res.status(404).json({ error: "Automation not found" });
+    }
+    if (!userEmail || String(automation.user_email || "").toLowerCase() !== userEmail) {
+      return res.status(403).json({ error: "This automation does not belong to this user" });
+    }
+    if (automation.is_active === false) {
+      return res.status(400).json({ error: "Activate the automation before re-triggering it" });
+    }
+    if (!automation.media_id) {
+      return res.status(400).json({ error: "Select a post or reel before re-triggering" });
+    }
+
+    const account =
+      (await getAccountForMedia(automation.media_id)) ||
+      (await getAutomationAccount(automation));
+    if (!account || !tokenFor(account)) {
+      return res.status(400).json({ error: "Reconnect Instagram before re-triggering" });
+    }
+
+    const comments = await fetchCommentsForRetrigger({
+      account,
+      mediaId: automation.media_id,
+    });
+    const createdAt = automation.created_at
+      ? new Date(automation.created_at).getTime()
+      : 0;
+    const eligible = comments.filter((comment) => {
+      if (!comment?.id || !comment?.text || comment.parent_id) return false;
+      const commentTime = comment.timestamp ? new Date(comment.timestamp).getTime() : Date.now();
+      return commentTime >= createdAt && automationMatchesComment(
+        automation,
+        String(comment.text).toLowerCase()
+      );
+    });
+
+    const commentIds = eligible.map((comment) => comment.id);
+    let existingInteractions = [];
+    if (commentIds.length) {
+      const { data = [], error } = await supabase
+        .from("automation_interactions")
+        .select("comment_id,public_reply_sent_at,opening_dm_sent_at,resource_delivered_at")
+        .eq("automation_id", automation.id);
+      if (error) throw error;
+      const eligibleCommentIds = new Set(commentIds);
+      existingInteractions = data.filter((item) =>
+        eligibleCommentIds.has(item.comment_id)
+      );
+    }
+
+    const handledIds = new Set(
+      existingInteractions
+        .filter((item) => item.public_reply_sent_at)
+        .map((item) => item.comment_id)
+    );
+    const summary = {
+      checked: comments.length,
+      eligible: eligible.length,
+      already_handled: 0,
+      processed: 0,
+      failed: 0,
+    };
+
+    for (const comment of eligible) {
+      if (handledIds.has(comment.id)) {
+        summary.already_handled += 1;
+        continue;
+      }
+
+      const from = comment.from || {
+        id: comment.username || comment.id,
+        username: comment.username || null,
+      };
+      const value = {
+        ...comment,
+        from,
+        media: { id: automation.media_id },
+        media_id: automation.media_id,
+      };
+
+      try {
+        const result = await processComment({
+          body: { source: "manual_retrigger", automation_id: automation.id },
+          entry: { id: account.instagram_user_id || account.instagram_account_id },
+          change: { field: "comments", value },
+          value,
+          automationOverride: automation,
+        });
+        if (result?.status === "processed") summary.processed += 1;
+        else summary.failed += 1;
+      } catch (error) {
+        summary.failed += 1;
+        console.error("Manual re-trigger failed for comment:", comment.id, error.response?.data || error.message);
+      }
+    }
+
+    return res.json(summary);
+  } catch (error) {
+    console.error("Automation re-trigger error:", error.response?.data || error.message);
+    return res.status(500).json({
+      error:
+        error.response?.data?.error?.message ||
+        error.message ||
+        "Failed to check missed comments",
+    });
+  }
+});
 
 router.get("/instagram", (req, res) => {
   const VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN;

@@ -19,6 +19,7 @@ function publicUser(user) {
   return {
     id: user.id,
     email: user.email,
+    email_confirmed_at: user.email_confirmed_at || null,
     user_metadata: user.user_metadata || {},
   };
 }
@@ -105,7 +106,7 @@ class LocalTableQuery {
 
 export const localSupabase = {
   auth: {
-    async signUp({ email, password }) {
+    async signUp({ email, password, options = {} }) {
       const users = getJson(USERS_KEY, []);
       const normalizedEmail = email.trim().toLowerCase();
 
@@ -117,12 +118,15 @@ export const localSupabase = {
         id: crypto.randomUUID(),
         email: normalizedEmail,
         password,
+        email_confirmed_at: null,
+        verification_code: "123456",
+        user_metadata: options.data || {},
       };
 
       setJson(USERS_KEY, [...users, user]);
-      setJson(SESSION_KEY, { userId: user.id });
+      localStorage.removeItem(SESSION_KEY);
 
-      return { data: { user: publicUser(user) }, error: null };
+      return { data: { user: publicUser(user), session: null }, error: null };
     },
 
     async signInWithPassword({ email, password }) {
@@ -137,6 +141,10 @@ export const localSupabase = {
         return { data: {}, error: { message: "Invalid email or password" } };
       }
 
+      if (!user.email_confirmed_at) {
+        return { data: {}, error: { message: "Email not confirmed" } };
+      }
+
       setJson(SESSION_KEY, { userId: user.id });
 
       return { data: { user: publicUser(user) }, error: null };
@@ -148,16 +156,18 @@ export const localSupabase = {
       }
 
       const users = getJson(USERS_KEY, []);
-      const user = {
+      const existing = users.find((candidate) => candidate.email === "local.google.user@example.com");
+      const user = existing || {
         id: crypto.randomUUID(),
         email: "local.google.user@example.com",
         password: null,
+        email_confirmed_at: new Date().toISOString(),
         user_metadata: {
           full_name: "Local Google User",
         },
       };
 
-      setJson(USERS_KEY, [...users, user]);
+      if (!existing) setJson(USERS_KEY, [...users, user]);
       setJson(SESSION_KEY, { userId: user.id });
       window.location.href = options.redirectTo || "/connect-meta";
 
@@ -185,6 +195,68 @@ export const localSupabase = {
 
     async setSession() {
       return this.getSession();
+    },
+
+    async exchangeCodeForSession() {
+      return this.getSession();
+    },
+
+    async verifyOtp({ email, token, type }) {
+      if (type !== "signup") {
+        return { data: {}, error: { message: "Unsupported verification type" } };
+      }
+
+      const users = getJson(USERS_KEY, []);
+      const normalizedEmail = email?.trim().toLowerCase();
+      const index = users.findIndex((candidate) => candidate.email === normalizedEmail);
+      if (index < 0 || users[index].verification_code !== token) {
+        return { data: {}, error: { message: "Invalid or expired verification code" } };
+      }
+
+      users[index] = {
+        ...users[index],
+        email_confirmed_at: new Date().toISOString(),
+        verification_code: null,
+      };
+      setJson(USERS_KEY, users);
+      setJson(SESSION_KEY, { userId: users[index].id });
+      return {
+        data: { user: publicUser(users[index]), session: { user: publicUser(users[index]) } },
+        error: null,
+      };
+    },
+
+    async resend({ email }) {
+      const users = getJson(USERS_KEY, []);
+      const index = users.findIndex(
+        (candidate) => candidate.email === email?.trim().toLowerCase()
+      );
+      if (index >= 0) {
+        users[index] = { ...users[index], verification_code: "123456" };
+        setJson(USERS_KEY, users);
+      }
+      return { data: {}, error: null };
+    },
+
+    async resetPasswordForEmail(email) {
+      const users = getJson(USERS_KEY, []);
+      const user = users.find(
+        (candidate) => candidate.email === email?.trim().toLowerCase()
+      );
+      if (user) setJson(SESSION_KEY, { userId: user.id });
+      return { data: {}, error: null };
+    },
+
+    async updateUser({ password }) {
+      const session = getJson(SESSION_KEY, null);
+      const users = getJson(USERS_KEY, []);
+      const index = users.findIndex((candidate) => candidate.id === session?.userId);
+      if (index < 0) {
+        return { data: {}, error: { message: "Password reset session expired" } };
+      }
+      users[index] = { ...users[index], password };
+      setJson(USERS_KEY, users);
+      return { data: { user: publicUser(users[index]) }, error: null };
     },
 
     async signOut() {

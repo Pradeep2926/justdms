@@ -14,6 +14,7 @@ const INITIAL_DATA = {
   automations: [],
   automation_interactions: [],
   automation_events: [],
+  subscriptions: [],
 };
 
 function ensureDb() {

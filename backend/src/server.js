@@ -1,11 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
+require("dotenv").config({ path: ".env.local", override: true });
 
 const authRoutes = require("./routes/auth.routes");
 const instagramRoutes = require("./routes/instagram.routes");
 const automationRoutes = require("./routes/automation.routes");
 const webhookRoutes = require("./routes/webhook.routes");
+const billingRoutes = require("./routes/billing.routes");
 
 const app = express();
 const allowedOrigins = [
@@ -52,6 +54,7 @@ app.use("/auth", authRoutes);
 app.use("/instagram", instagramRoutes);
 app.use("/automation", automationRoutes);
 app.use("/webhook", webhookRoutes);
+app.use("/billing", billingRoutes);
 
 /**
  * =============================
