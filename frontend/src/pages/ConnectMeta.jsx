@@ -38,7 +38,7 @@ export default function ConnectMeta() {
       .catch((err) => setAccountError(err.response?.data?.error || err.message));
   }, [connectionId, user?.email]);
 
-  const connectInstagram = (provider = "instagram") => {
+  const connectInstagram = (provider = "meta") => {
     if (!user) {
       alert("User not logged in");
       return;
@@ -90,7 +90,7 @@ export default function ConnectMeta() {
           <p className="text-slate-600 text-sm leading-relaxed">
             {connectionId
               ? "Choose which Instagram professional account JustDMs should use."
-              : "Connect your Instagram Business or Creator account through Meta's official OAuth. Your credentials are never stored on our servers."}
+              : "Connect your Instagram Business or Creator account through Meta's official OAuth. Use Facebook when the account is linked to a Page, or Instagram for a standalone professional account."}
           </p>
           <div className="flex items-center justify-center gap-2 text-xs text-emerald-600">
             <Shield className="w-4 h-4" />
@@ -133,21 +133,24 @@ export default function ConnectMeta() {
         ) : (
         <div className="space-y-3">
         <button
-          onClick={() => connectInstagram("instagram")}
+          onClick={() => connectInstagram("meta")}
           disabled={loading}
           className="w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Checking account..." : "Continue with Instagram"}
+          {loading ? "Checking account..." : "Continue with Facebook"}
           <ArrowRight className="w-4 h-4" />
         </button>
         <button
           type="button"
-          onClick={() => connectInstagram("meta")}
+          onClick={() => connectInstagram("instagram")}
           disabled={loading}
           className="w-full btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Connect through Facebook Page
+          Connect directly with Instagram
         </button>
+        <p className="px-2 text-xs leading-5 text-slate-500">
+          Choose Facebook for a Page-linked account such as AlphaxStore. Choose Instagram only when the professional account is not linked to a Facebook Page.
+        </p>
         </div>
         )}
       </div>
