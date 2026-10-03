@@ -31,6 +31,34 @@ function isMissingColumnError(error, column) {
     .includes(`'${column}'`);
 }
 
+async function requirePro(req, res, next) {
+  try {
+    const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+    if (!token) return res.status(401).json({ error: "Please sign in to manage automations." });
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user?.email) {
+      return res.status(401).json({ error: "Your session could not be verified." });
+    }
+
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_email", data.user.email)
+      .maybeSingle();
+    if (subscriptionError) throw subscriptionError;
+    if (subscription?.status !== "active") {
+      return res.status(403).json({ error: "JustDMs Pro is required to manage automations." });
+    }
+
+    req.automationUser = data.user;
+    return next();
+  } catch (error) {
+    console.error("Automation subscription check failed:", error);
+    return res.status(500).json({ error: "Unable to verify your subscription." });
+  }
+}
+
 router.get("/metrics/:userEmail", async (req, res) => {
   try {
     const { userEmail } = req.params;
@@ -224,7 +252,7 @@ router.get("/:userEmail", async (req, res) => {
  * CREATE AUTOMATION
  * POST /automation
  */
-router.post("/", async (req, res) => {
+router.post("/", requirePro, async (req, res) => {
   try {
     console.log("👉 Automation payload:", req.body);
 
@@ -259,8 +287,8 @@ router.post("/", async (req, res) => {
     }
 
     const automationRecord = {
-      user_id,
-      user_email,
+      user_id: req.automationUser.id,
+      user_email: req.automationUser.email,
       name: name || null,
       media_id,
       trigger_type: "keyword",
@@ -337,7 +365,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requirePro, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = {};
@@ -357,6 +385,15 @@ router.patch("/:id", async (req, res) => {
     }
 
     updates.updated_at = new Date().toISOString();
+
+    const { data: ownedAutomation, error: ownershipError } = await supabase
+      .from("automations")
+      .select("id")
+      .eq("id", id)
+      .eq("user_email", req.automationUser.email)
+      .maybeSingle();
+    if (ownershipError) throw ownershipError;
+    if (!ownedAutomation) return res.status(404).json({ error: "Automation not found." });
 
     let { data, error } = await supabase
       .from("automations")

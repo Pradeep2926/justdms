@@ -4,11 +4,15 @@ import AppLayout from "../components/layout/AppLayout";
 import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
 import api from "../api/api";
-import { CalendarDays, Filter, Plus, Search, Workflow, X } from "lucide-react";
+import { CalendarDays, Crown, Filter, Plus, Search, Workflow, X } from "lucide-react";
 import { useInstagram } from "../hooks/useInstagram";
+import { useSubscription } from "../hooks/useSubscription";
+import { useNavigate } from "react-router-dom";
 
 export default function Automation() {
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
+  const navigate = useNavigate();
+  const { isPro, loading: subscriptionLoading } = useSubscription(user);
   const [posts, setPosts] = useState([]);
   const [automations, setAutomations] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
@@ -60,11 +64,14 @@ export default function Automation() {
   }, []);
 
   useEffect(() => {
-    if (user?.email) {
+    if (user?.email && isPro) {
       fetchPosts(user.email);
       fetchAutomations(user.email);
+    } else if (user?.email && !subscriptionLoading) {
+      setLoadingPosts(false);
+      setLoadingAutomations(false);
     }
-  }, [user, fetchPosts, fetchAutomations]);
+  }, [user, isPro, subscriptionLoading, fetchPosts, fetchAutomations]);
 
   const refreshAutomations = async () => {
     if (user?.email) {
@@ -112,12 +119,31 @@ export default function Automation() {
     }
   };
 
-  if (authLoading || loadingPosts || loadingAutomations) {
+  if (authLoading || subscriptionLoading || loadingPosts || loadingAutomations) {
     return (
       <AppLayout title="Automations" subtitle="Loading...">
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
         </div>
+      </AppLayout>
+    );
+  }
+
+  if (!isPro) {
+    return (
+      <AppLayout title="Automations" subtitle="Create Instagram workflows with JustDMs Pro">
+        <section className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+            <Crown className="h-7 w-7" />
+          </span>
+          <h2 className="mt-5 text-2xl font-bold text-slate-950">Automation is included with Pro</h2>
+          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-600">
+            Subscribe to create unlimited comment-to-DM automations, keyword triggers, follow gates, and lead delivery flows.
+          </p>
+          <button type="button" onClick={() => navigate("/billing")} className="btn-primary mt-7">
+            <Crown className="h-4 w-4" /> View Pro plan
+          </button>
+        </section>
       </AppLayout>
     );
   }

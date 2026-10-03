@@ -9,10 +9,13 @@ import {
   Plus,
   X,
   CreditCard,
+  Crown,
+  MessageCircle,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
 import logoUrl from "../../assets/justdms-logo.png";
+import { useSubscription } from "../../hooks/useSubscription";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: Activity, label: "Dashboard" },
@@ -26,6 +29,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { ig } = useInstagram(user?.email);
+  const { isPro } = useSubscription(user);
 
   return (
     <aside
@@ -56,7 +60,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
         <button
           onClick={() => {
             onNavigate?.();
-            navigate("/automation");
+            navigate(isPro ? "/automation" : "/billing");
           }}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-ink-900 transition hover:bg-brand-50"
         >
@@ -109,6 +113,11 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">@{ig.username}</p>
+              {isPro && (
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-amber-300">
+                  <Crown className="h-3 w-3" /> Pro plan
+                </p>
+              )}
             </div>
             <ChevronDown className="w-4 h-4 text-white/45 shrink-0" />
           </div>
@@ -116,6 +125,15 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
       )}
 
       <div className="p-4 border-t border-white/10">
+        <a
+          href="https://wa.me/917799100870"
+          target="_blank"
+          rel="noreferrer"
+          className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-400"
+        >
+          <MessageCircle className="h-4 w-4" />
+          WhatsApp Support
+        </a>
         <button
           onClick={() => {
             onNavigate?.();

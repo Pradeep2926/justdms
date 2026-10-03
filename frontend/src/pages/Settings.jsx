@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Info, Mail, Pencil, Phone, Save, Settings as SettingsIcon } from "lucide-react";
+import { CheckCircle2, MessageCircle, Save, Settings as SettingsIcon } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
@@ -9,7 +9,6 @@ export default function Settings() {
   const [profile, setProfile] = useState({ firstName: "", lastName: "", mobile: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingSupport, setEditingSupport] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -118,22 +117,27 @@ export default function Settings() {
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-6 sm:px-8">
               <div>
                 <h2 className="text-xl font-bold text-ink-900">Support channel</h2>
-                <p className="mt-1 text-sm text-slate-500">How JustDMs can contact you about your workspace.</p>
+                <p className="mt-1 text-sm text-slate-500">Chat with the JustDMs team when you need help.</p>
               </div>
-              <button type="button" onClick={() => setEditingSupport((current) => !current)} className="btn-secondary py-2.5 text-sm">
-                <Pencil className="h-4 w-4" />
-                {editingSupport ? "Done" : "Edit"}
-              </button>
             </div>
-            <div className="space-y-5 px-5 py-6 sm:px-8 sm:py-8">
-              <ContactRow icon={Mail} label="Support email" value={user?.email || "Not available"} />
-              <ContactRow icon={Phone} label="Support phone number" value={profile.mobile || "Not added"} />
-              {editingSupport && (
-                <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                  Edit your support contact details in General settings above, then save changes.
-                </div>
-              )}
+            <div className="px-5 py-6 sm:px-8 sm:py-8">
+              <a
+                href="https://wa.me/917799100870"
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-col gap-4 rounded-lg border border-emerald-200 bg-emerald-50 p-5 transition hover:border-emerald-300 hover:bg-emerald-100 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white">
+                    <MessageCircle className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block font-bold text-slate-900">WhatsApp support</span>
+                    <span className="mt-0.5 block text-sm text-slate-600">+91 77991 00870</span>
+                  </span>
+                </span>
+                <span className="text-sm font-bold text-emerald-700">Start chat</span>
+              </a>
             </div>
           </section>
         </div>
@@ -156,17 +160,5 @@ function Field({ label, value, onChange, disabled = false, type = "text", placeh
       />
       {hint && <span className="mt-2 block text-xs text-slate-400">{hint}</span>}
     </label>
-  );
-}
-
-function ContactRow({ icon: Icon, label, value }) {
-  return (
-    <div>
-      <p className="mb-2 text-sm font-semibold text-slate-600">{label}</p>
-      <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3.5 text-slate-700">
-        <Icon className="h-5 w-5 text-slate-400" />
-        <span className="truncate">{value}</span>
-      </div>
-    </div>
   );
 }
