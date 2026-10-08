@@ -6,7 +6,7 @@ const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v19.0";
 const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 const INSTAGRAM_GRAPH_BASE_URL = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 const INSTAGRAM_PROFILE_FIELDS =
-  "id,username,name,account_type,profile_picture_url,followers_count,follows_count,media_count";
+  "id,user_id,username,name,account_type,profile_picture_url,followers_count,follows_count,media_count";
 
 function addDays(days) {
   return new Date(
@@ -273,6 +273,18 @@ async function getAccountByEmail(userEmail) {
   return data;
 }
 
+async function getAccountsByInstagramUserId(instagramUserId) {
+  if (!instagramUserId) return [];
+
+  const { data, error } = await supabase
+    .from("instagram_accounts")
+    .select("id,user_email,instagram_user_id,username")
+    .eq("instagram_user_id", instagramUserId);
+
+  if (error) throw error;
+  return data || [];
+}
+
 async function saveAccount(account) {
   if (!account?.user_email) {
     throw new Error(
@@ -283,6 +295,22 @@ async function saveAccount(account) {
   const existing = await getAccountByEmail(
     account.user_email
   );
+
+  const existingOwners = await getAccountsByInstagramUserId(
+    account.instagram_user_id
+  );
+  const requestedEmail = String(account.user_email).trim().toLowerCase();
+  const isExistingOwner = existingOwners.some(
+    (owner) => String(owner.user_email || "").trim().toLowerCase() === requestedEmail
+  );
+
+  if (existingOwners.length > 0 && !isExistingOwner) {
+    const error = new Error(
+      "This Instagram account is already connected to another JustDMs login. Sign in with that login or connect a different Instagram account."
+    );
+    error.code = "INSTAGRAM_ACCOUNT_ALREADY_CONNECTED";
+    throw error;
+  }
 
   const now = new Date().toISOString();
 
@@ -489,6 +517,7 @@ async function syncAccount(userEmail) {
     instagram_username: profile.username,
     instagram_user_id: profile.id,
     instagram_account_id: profile.id,
+    messaging_owner_id: profile.user_id || account.messaging_owner_id || null,
     name: profile.name || null,
     profile_picture_url:
       profile.profile_picture_url || null,
@@ -671,6 +700,7 @@ async function connectInstagramDirectAccount({ userEmail, code, instagramConfig 
     auth_provider: "instagram",
     instagram_user_id: instagramUserId,
     instagram_account_id: instagramUserId,
+    messaging_owner_id: profile.user_id || null,
     facebook_page_id: null,
     page_id: null,
     business_account_id: instagramUserId,

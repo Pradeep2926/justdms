@@ -1,11 +1,14 @@
 const express = require("express");
 const supabase = require("../lib/supabase");
+const { getAuthenticatedUser } = require("../lib/authClient");
 
 const router = express.Router();
 
 const AUTOMATION_UPDATE_FIELDS = [
   "name",
   "media_id",
+  "trigger_type",
+  "trigger_match_type",
   "retrigger_enabled",
   "trigger_value",
   "message",
@@ -22,6 +25,7 @@ const AUTOMATION_UPDATE_FIELDS = [
   "resource_type",
   "resource_url",
   "resource_button_label",
+  "resource_buttons",
   "is_active",
 ];
 
@@ -33,25 +37,22 @@ function isMissingColumnError(error, column) {
 
 async function requirePro(req, res, next) {
   try {
-    const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    if (!token) return res.status(401).json({ error: "Please sign in to manage automations." });
-
-    const { data, error } = await supabase.auth.getUser(token);
-    if (error || !data?.user?.email) {
+    const user = await getAuthenticatedUser(req);
+    if (!user?.email) {
       return res.status(401).json({ error: "Your session could not be verified." });
     }
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
       .select("status")
-      .eq("user_email", data.user.email)
+      .eq("user_email", user.email)
       .maybeSingle();
     if (subscriptionError) throw subscriptionError;
     if (subscription?.status !== "active") {
       return res.status(403).json({ error: "JustDMs Pro is required to manage automations." });
     }
 
-    req.automationUser = data.user;
+    req.automationUser = user;
     return next();
   } catch (error) {
     console.error("Automation subscription check failed:", error);
@@ -261,6 +262,8 @@ router.post("/", requirePro, async (req, res) => {
       user_email,
       name,
       media_id,
+      trigger_type,
+      trigger_match_type,
       trigger_value,
       retrigger_enabled,
       message,
@@ -277,10 +280,20 @@ router.post("/", requirePro, async (req, res) => {
       resource_type,
       resource_url,
       resource_button_label,
+      resource_buttons,
       is_active,
     } = req.body;
 
-    if (!user_id || !user_email || !media_id || !trigger_value || !message) {
+    const normalizedTriggerType =
+      trigger_type === "dm_keyword" ? "dm_keyword" : "comment";
+
+    if (
+      !user_id ||
+      !user_email ||
+      !trigger_value ||
+      !message ||
+      (normalizedTriggerType === "comment" && !media_id)
+    ) {
       return res.status(400).json({
         error: "Missing required fields",
       });
@@ -290,21 +303,28 @@ router.post("/", requirePro, async (req, res) => {
       user_id: req.automationUser.id,
       user_email: req.automationUser.email,
       name: name || null,
-      media_id,
-      trigger_type: "keyword",
+      media_id: normalizedTriggerType === "comment" ? media_id : null,
+      trigger_type: normalizedTriggerType,
+      trigger_match_type:
+        trigger_match_type === "contains" ? "contains" : "exact",
       trigger_value,
       retrigger_enabled: Boolean(retrigger_enabled),
       message,
       public_reply:
-        public_reply ||
-        "Sent check the DM",
-      opening_dm_enabled: opening_dm_enabled !== false,
+        normalizedTriggerType === "comment"
+          ? public_reply || "Sent check the DM"
+          : "",
+      opening_dm_enabled:
+        normalizedTriggerType === "comment" && opening_dm_enabled !== false,
       opening_dm_message:
-        opening_dm_message ||
-        "Hey {{first_name}} 👋\nThanks for commenting!\nPlease tap the button below to get the details.",
+        normalizedTriggerType === "comment"
+          ? opening_dm_message ||
+            "Hey {{first_name}} 👋\nThanks for commenting!\nPlease tap the button below to get the details."
+          : "",
       opening_dm_button_text:
         opening_dm_button_text || "Get Details",
-      follow_required: Boolean(follow_required),
+      follow_required:
+        normalizedTriggerType === "comment" && Boolean(follow_required),
       not_following_message:
         not_following_message ||
         "Oops! It looks like you’re not following us yet 👀\n\nThis resource is available only to our followers.\n\nPlease visit our profile, follow us, and then tap ‘I’m Following’ below.",
@@ -322,6 +342,15 @@ router.post("/", requirePro, async (req, res) => {
       resource_url: resource_url || null,
       resource_button_label:
         resource_button_label || "Open Details",
+      resource_buttons: Array.isArray(resource_buttons)
+        ? resource_buttons
+            .filter((button) => button?.url && button?.label)
+            .slice(0, 3)
+            .map((button) => ({
+              label: String(button.label).slice(0, 20),
+              url: String(button.url),
+            }))
+        : [],
       is_active: is_active !== false,
     };
 
@@ -335,12 +364,14 @@ router.post("/", requirePro, async (req, res) => {
       error &&
       (isMissingColumnError(error, "name") ||
         isMissingColumnError(error, "opening_dm_enabled") ||
-        isMissingColumnError(error, "retrigger_enabled"))
+        isMissingColumnError(error, "retrigger_enabled") ||
+        isMissingColumnError(error, "resource_buttons"))
     ) {
       const fallbackRecord = { ...automationRecord };
       delete fallbackRecord.name;
       delete fallbackRecord.opening_dm_enabled;
       delete fallbackRecord.retrigger_enabled;
+      delete fallbackRecord.resource_buttons;
       const fallback = await supabase
         .from("automations")
         .insert([fallbackRecord])

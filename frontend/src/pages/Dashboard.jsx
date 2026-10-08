@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useInstagram } from "../hooks/useInstagram";
 import AppLayout from "../components/layout/AppLayout";
 import StatsCard from "../components/dashboard/StatsCard";
+import { DashboardLoader } from "../components/common/PageLoader";
 import api from "../api/api";
 import {
   AlertCircle,
@@ -72,9 +73,7 @@ export default function Dashboard() {
       }
     >
       {loading && (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <DashboardLoader />
       )}
 
       {!loading && error && (

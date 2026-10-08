@@ -3,6 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import AppLayout from "../components/layout/AppLayout";
 import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
+import { AutomationLoader } from "../components/common/PageLoader";
 import api from "../api/api";
 import { ArrowRight, CalendarDays, Crown, Filter, Instagram, Plus, Search, Workflow, X } from "lucide-react";
 import { useInstagram } from "../hooks/useInstagram";
@@ -13,16 +14,14 @@ export default function Automation() {
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
   const navigate = useNavigate();
   const { isPro, loading: subscriptionLoading } = useSubscription(user);
-  const [posts, setPosts] = useState([]);
   const [automations, setAutomations] = useState([]);
-  const [loadingPosts, setLoadingPosts] = useState(true);
   const [loadingAutomations, setLoadingAutomations] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingAutomation, setEditingAutomation] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("30");
-  const { ig, connected, loading: instagramLoading } = useInstagram(user?.email);
+  const { ig, media: posts, connected, loading: instagramLoading } = useInstagram(user?.email);
 
   const filteredAutomations = automations.filter((automation) => {
     const query = search.trim().toLowerCase();
@@ -41,17 +40,6 @@ export default function Automation() {
     return matchesSearch && matchesStatus && matchesDate;
   });
 
-  const fetchPosts = useCallback(async (email) => {
-    try {
-      const { data } = await api.get(`/instagram/posts/${email}`);
-      setPosts(Array.isArray(data) ? data : []);
-    } catch {
-      setPosts([]);
-    } finally {
-      setLoadingPosts(false);
-    }
-  }, []);
-
   const fetchAutomations = useCallback(async (email) => {
     try {
       const { data } = await api.get(`/automation/${email}`);
@@ -65,13 +53,11 @@ export default function Automation() {
 
   useEffect(() => {
     if (user?.email && isPro && connected) {
-      fetchPosts(user.email);
       fetchAutomations(user.email);
     } else if (user?.email && !subscriptionLoading && !instagramLoading) {
-      setLoadingPosts(false);
       setLoadingAutomations(false);
     }
-  }, [user, isPro, connected, instagramLoading, subscriptionLoading, fetchPosts, fetchAutomations]);
+  }, [user?.email, isPro, connected, instagramLoading, subscriptionLoading, fetchAutomations]);
 
   const refreshAutomations = async () => {
     if (user?.email) {
@@ -119,12 +105,10 @@ export default function Automation() {
     }
   };
 
-  if (authLoading || subscriptionLoading || instagramLoading || loadingPosts || loadingAutomations) {
+  if (authLoading || subscriptionLoading || instagramLoading) {
     return (
-      <AppLayout title="Automations" subtitle="Loading...">
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-        </div>
+      <AppLayout title="Automations" subtitle="Preparing your workspace">
+        <AutomationLoader />
       </AppLayout>
     );
   }
@@ -165,6 +149,17 @@ export default function Automation() {
             </button>
           </div>
         </section>
+      </AppLayout>
+    );
+  }
+
+  if (loadingAutomations) {
+    return (
+      <AppLayout
+        title="Automations"
+        subtitle={ig ? `Loading workflows for @${ig.username}` : "Loading your workflows"}
+      >
+        <AutomationLoader />
       </AppLayout>
     );
   }

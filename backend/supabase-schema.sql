@@ -35,6 +35,10 @@ create table if not exists instagram_accounts (
 alter table instagram_accounts
   add column if not exists auth_provider text default 'facebook';
 
+create unique index if not exists instagram_accounts_instagram_user_id_idx
+  on instagram_accounts(instagram_user_id)
+  where instagram_user_id is not null;
+
 create table if not exists subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id text not null,
@@ -136,6 +140,7 @@ create table if not exists automations (
   user_email text,
   media_id text references instagram_media(id) on delete cascade,
   trigger_type text default 'keyword',
+  trigger_match_type text default 'exact',
   trigger_value text not null,
   retrigger_enabled boolean default false,
   message text not null,
@@ -152,6 +157,7 @@ create table if not exists automations (
   resource_type text default 'link',
   resource_url text,
   resource_button_label text,
+  resource_buttons jsonb default '[]'::jsonb,
   is_active boolean default true,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -159,6 +165,7 @@ create table if not exists automations (
 
 alter table automations
   add column if not exists name text,
+  add column if not exists trigger_match_type text default 'exact',
   add column if not exists user_email text,
   add column if not exists retrigger_enabled boolean default false,
   add column if not exists public_reply text,
@@ -174,8 +181,12 @@ alter table automations
   add column if not exists resource_type text default 'link',
   add column if not exists resource_url text,
   add column if not exists resource_button_label text,
+  add column if not exists resource_buttons jsonb default '[]'::jsonb,
   add column if not exists is_active boolean default true,
   add column if not exists updated_at timestamptz default now();
+
+alter table instagram_accounts
+  add column if not exists messaging_owner_id text;
 
 create table if not exists automation_interactions (
   id uuid primary key default gen_random_uuid(),

@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
+let sessionPromise;
+
+function getCurrentUser() {
+  if (!sessionPromise) {
+    sessionPromise = supabase.auth
+      .getSession()
+      .then(({ data }) => data?.session?.user || null)
+      .catch((error) => {
+        sessionPromise = null;
+        throw error;
+      });
+  }
+  return sessionPromise;
+}
+
 async function syncProfile(user) {
   if (!user?.id) return;
 
@@ -35,25 +50,20 @@ export function useAuth({ redirectOnFail = false } = {}) {
     let mounted = true;
 
     async function loadUser() {
-      const { data } = await supabase.auth.getUser();
+      const user = await getCurrentUser();
 
       if (!mounted) return;
 
-      if (data?.user) {
-        await syncProfile(data.user);
-      }
-
-      if (!mounted) return;
-
-      if (!data?.user) {
+      if (!user) {
         setUser(null);
         setLoading(false);
         if (redirectOnFail) window.location.href = "/login";
         return;
       }
 
-      setUser(data.user);
+      setUser(user);
       setLoading(false);
+      syncProfile(user).catch(() => {});
     }
 
     loadUser();
@@ -65,6 +75,7 @@ export function useAuth({ redirectOnFail = false } = {}) {
 
   const logout = async () => {
     await supabase.auth.signOut();
+    sessionPromise = null;
     window.location.href = "/";
   };
 

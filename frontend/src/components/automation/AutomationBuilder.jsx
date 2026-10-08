@@ -42,7 +42,7 @@ const TRIGGER_OPTIONS = [
     title: "User DMs to you",
     description: "Start a flow from inbound Instagram DMs.",
     icon: "message",
-    available: false,
+    available: true,
   },
   {
     value: "live",
@@ -71,7 +71,12 @@ export default function AutomationBuilder({
   const [automationName, setAutomationName] = useState(
     initialAutomation?.name || ""
   );
-  const [triggerType, setTriggerType] = useState("comment");
+  const [triggerType, setTriggerType] = useState(
+    initialAutomation?.trigger_type === "dm_keyword" ? "dm" : "comment"
+  );
+  const [triggerMatchType, setTriggerMatchType] = useState(
+    initialAutomation?.trigger_match_type === "contains" ? "contains" : "exact"
+  );
   const [retriggering, setRetriggering] = useState(false);
   const [retriggerResult, setRetriggerResult] = useState(null);
   const [isActive, setIsActive] = useState(
@@ -110,12 +115,18 @@ export default function AutomationBuilder({
   const [successMessage, setSuccessMessage] = useState(
     initialAutomation?.success_message || DEFAULT_SUCCESS
   );
-  const [resourceUrl, setResourceUrl] = useState(
-    initialAutomation?.resource_url || ""
+  const initialResourceButtons = Array.isArray(initialAutomation?.resource_buttons)
+    ? initialAutomation.resource_buttons
+    : initialAutomation?.resource_url
+      ? [{
+          label: initialAutomation.resource_button_label || "Open Details",
+          url: initialAutomation.resource_url,
+        }]
+      : [{ label: "Open Details", url: "" }];
+  const [resourceType, setResourceType] = useState(
+    initialAutomation?.resource_type === "text" ? "text" : "link"
   );
-  const [resourceButtonLabel, setResourceButtonLabel] = useState(
-    initialAutomation?.resource_button_label || "Open Details"
-  );
+  const [resourceButtons, setResourceButtons] = useState(initialResourceButtons);
   const [followRequired, setFollowRequired] = useState(
     initialAutomation?.opening_dm_enabled === false
       ? false
@@ -145,39 +156,64 @@ export default function AutomationBuilder({
   const triggerValue = anyKeyword ? "*" : keywords.join(",");
   const validCommentReplies = commentReplies.filter((reply) => reply.trim());
   const publicReply = validCommentReplies.join(REPLY_SEPARATOR);
+  const linkButtonsComplete =
+    resourceType === "text" ||
+    (resourceButtons.length > 0 &&
+      resourceButtons.every(
+        (button) => button.label.trim() && button.url.trim()
+      ));
   const canSave =
     automationName.trim() &&
-    triggerType === "comment" &&
-    selectedPost &&
     triggerValue &&
-    publicReply.trim();
+    successMessage.trim() &&
+    linkButtonsComplete &&
+    (triggerType === "dm" || (selectedPost && publicReply.trim()));
   const payload = {
     name: automationName.trim(),
     user_id: user?.id,
     user_email: user?.email,
-    media_id: selectedPost,
+    media_id: triggerType === "comment" ? selectedPost : null,
+    trigger_type: triggerType === "dm" ? "dm_keyword" : "comment",
+    trigger_match_type: triggerMatchType,
     trigger_value: triggerValue,
     retrigger_enabled: false,
-    message: [openingMessage, successMessage, resourceUrl].filter(Boolean).join("\n\n"),
-    public_reply: publicReply,
-    opening_dm_enabled: openingEnabled,
-    opening_dm_message: openingEnabled ? openingMessage : "",
+    message: [
+      triggerType === "comment" && openingEnabled ? openingMessage : "",
+      successMessage,
+      ...(resourceType === "link"
+        ? resourceButtons.map((button) => button.url)
+        : []),
+    ].filter(Boolean).join("\n\n"),
+    public_reply: triggerType === "comment" ? publicReply : "",
+    opening_dm_enabled: triggerType === "comment" && openingEnabled,
+    opening_dm_message:
+      triggerType === "comment" && openingEnabled ? openingMessage : "",
     opening_dm_button_text: openingButtonText,
-    follow_required: followRequired,
+    follow_required: triggerType === "comment" && followRequired,
     not_following_message: notFollowingMessage,
     visit_profile_button_text: visitProfileButtonText,
     confirm_follow_button_text: confirmFollowButtonText,
     still_not_following_message: stillNotFollowingMessage,
     success_message: successMessage,
-    resource_type: "link",
-    resource_url: resourceUrl,
-    resource_button_label: resourceButtonLabel,
+    resource_type: resourceType,
+    resource_url: resourceType === "link" ? resourceButtons[0]?.url || "" : "",
+    resource_button_label:
+      resourceType === "link" ? resourceButtons[0]?.label || "Open Details" : "",
+    resource_buttons: resourceType === "link" ? resourceButtons : [],
     is_active: isActive,
   };
 
   const saveAutomation = async () => {
     if (!canSave) {
-      alert("Add a name, select a post, add a keyword, and add at least one comment reply.");
+      alert(
+        !successMessage.trim()
+          ? "Add response message text."
+          : !linkButtonsComplete
+            ? "Add a label and URL for every link button."
+            : triggerType === "dm"
+              ? "Add a name and at least one DM keyword."
+              : "Add a name, select a post, add a keyword, and add at least one comment reply."
+      );
       return;
     }
 
@@ -214,7 +250,7 @@ export default function AutomationBuilder({
       );
       setRetriggerResult({
         tone: data.failed ? "warning" : "success",
-        message: `Checked ${data.checked} comments. Responded to ${data.processed} missed comments, skipped ${data.already_handled} already handled comments${data.failed ? `, and ${data.failed} could not be processed` : ""}.`,
+        message: `Checked ${data.checked} comments. ${data.eligible} matched this automation. Responded to ${data.processed} missed comments, skipped ${data.already_handled} already handled comments${data.not_matching ? `, ignored ${data.not_matching} comments that did not match the keyword` : ""}${data.failed ? `, and ${data.failed} could not be processed` : ""}.`,
       });
     } catch (err) {
       setRetriggerResult({
@@ -250,7 +286,7 @@ export default function AutomationBuilder({
           </h2>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-          <button
+          {triggerType === "comment" && <button
             type="button"
             onClick={retriggerMissedComments}
             disabled={retriggering}
@@ -259,7 +295,7 @@ export default function AutomationBuilder({
           >
             <RotateCcw className={`h-4 w-4 ${retriggering ? "animate-spin" : ""}`} />
             {retriggering ? "Checking..." : "Re-Trigger"}
-          </button>
+          </button>}
           <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4">
             <span className="text-sm font-bold text-slate-700">Status</span>
             <button
@@ -317,10 +353,16 @@ export default function AutomationBuilder({
         </BuilderSection>
 
         <BuilderSection step="2" title="Select trigger">
-          <TriggerDropdown value={triggerType} onChange={setTriggerType} />
+          <TriggerDropdown
+            value={triggerType}
+            onChange={(value) => {
+              setTriggerType(value);
+              if (value === "dm") setOpeningEnabled(false);
+            }}
+          />
         </BuilderSection>
 
-        <BuilderSection step="3" title="Select post">
+        {triggerType === "comment" && <BuilderSection step="3" title="Select post">
           <SetupActionCard
             icon={<Image className="h-7 w-7" />}
             title={selectedPost ? "Post or Reel selected" : "Select Post or Reel"}
@@ -333,20 +375,24 @@ export default function AutomationBuilder({
             complete={Boolean(selectedPost)}
             onClick={() => setModal("post")}
           />
-        </BuilderSection>
+        </BuilderSection>}
 
-        <BuilderSection step="4" title="Select keyword">
+        <BuilderSection step={triggerType === "dm" ? "3" : "4"} title="Select keyword">
           <SetupActionCard
             icon={<Languages className="h-7 w-7" />}
             title={anyKeyword ? "Any keyword" : keywords.length ? keywords.join(", ") : "Setup Keywords"}
-            description="Comments matching these words will start the automation."
+            description={
+              triggerType === "dm"
+                ? `Inbound DMs that ${triggerMatchType === "contains" ? "contain" : "exactly match"} these words will start the automation.`
+                : "Comments matching these words will start the automation."
+            }
             actionLabel="Edit"
             complete={Boolean(triggerValue)}
             onClick={() => setModal("keywords")}
           />
         </BuilderSection>
 
-        <BuilderSection step="5" title="Reply to the comment">
+        {triggerType === "comment" && <BuilderSection step="5" title="Reply to the comment">
           <SetupActionCard
             icon={<MessageCircle className="h-7 w-7" />}
             title={
@@ -359,7 +405,7 @@ export default function AutomationBuilder({
             complete={Boolean(publicReply.trim())}
             onClick={() => setModal("replies")}
           />
-        </BuilderSection>
+        </BuilderSection>}
 
         <FlowPreview
           openingEnabled={openingEnabled}
@@ -370,10 +416,10 @@ export default function AutomationBuilder({
           setOpeningButtonText={setOpeningButtonText}
           successMessage={successMessage}
           setSuccessMessage={setSuccessMessage}
-          resourceUrl={resourceUrl}
-          setResourceUrl={setResourceUrl}
-          resourceButtonLabel={resourceButtonLabel}
-          setResourceButtonLabel={setResourceButtonLabel}
+          resourceType={resourceType}
+          setResourceType={setResourceType}
+          resourceButtons={resourceButtons}
+          setResourceButtons={setResourceButtons}
           followRequired={followRequired}
           setFollowRequired={setFollowRequired}
           notFollowingMessage={notFollowingMessage}
@@ -384,6 +430,7 @@ export default function AutomationBuilder({
           setConfirmFollowButtonText={setConfirmFollowButtonText}
           stillNotFollowingMessage={stillNotFollowingMessage}
           setStillNotFollowingMessage={setStillNotFollowingMessage}
+          triggerType={triggerType}
         />
 
       </div>
@@ -402,6 +449,9 @@ export default function AutomationBuilder({
           setKeywords={setKeywords}
           anyKeyword={anyKeyword}
           setAnyKeyword={setAnyKeyword}
+          matchType={triggerMatchType}
+          setMatchType={setTriggerMatchType}
+          subject={triggerType === "dm" ? "DM" : "comment"}
           onClose={() => setModal(null)}
         />
       )}
@@ -532,6 +582,9 @@ function KeywordsModal({
   setKeywords,
   anyKeyword,
   setAnyKeyword,
+  matchType,
+  setMatchType,
+  subject = "comment",
   onClose,
 }) {
   const [draft, setDraft] = useState("");
@@ -548,6 +601,19 @@ function KeywordsModal({
       <p className="mb-6 text-lg font-medium leading-relaxed text-slate-500">
         Keywords are not case-sensitive, e.g. "Link" and "link" are recognized as the same.
       </p>
+      {subject === "DM" && (
+        <label className="mb-5 block">
+          <span className="mb-2 block text-sm font-bold text-slate-700">Match type</span>
+          <select
+            className="input text-lg font-semibold"
+            value={matchType}
+            onChange={(event) => setMatchType(event.target.value)}
+          >
+            <option value="exact">Exact match</option>
+            <option value="contains">Contains</option>
+          </select>
+        </label>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row">
         <input
           className="input text-lg"
@@ -575,7 +641,7 @@ function KeywordsModal({
         <div>
           <span className="text-lg font-semibold text-slate-950">Any keyword</span>
           <p className="text-sm font-medium text-slate-500">
-            Use this when every comment should trigger the flow.
+            Use this when every {subject} should trigger the flow.
           </p>
         </div>
         <Toggle enabled={anyKeyword} onChange={() => setAnyKeyword(!anyKeyword)} />
@@ -599,7 +665,7 @@ function KeywordsModal({
         )}
         {anyKeyword && (
           <span className="rounded-lg bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
-            Every comment will trigger
+            Every {subject} will trigger
           </span>
         )}
       </div>
@@ -672,10 +738,10 @@ function FlowPreview({
   setOpeningButtonText,
   successMessage,
   setSuccessMessage,
-  resourceUrl,
-  setResourceUrl,
-  resourceButtonLabel,
-  setResourceButtonLabel,
+  resourceType,
+  setResourceType,
+  resourceButtons,
+  setResourceButtons,
   followRequired,
   setFollowRequired,
   notFollowingMessage,
@@ -686,6 +752,7 @@ function FlowPreview({
   setConfirmFollowButtonText,
   stillNotFollowingMessage,
   setStillNotFollowingMessage,
+  triggerType,
 }) {
   const [addResponseOpen, setAddResponseOpen] = useState(false);
   const [followEditorOpen, setFollowEditorOpen] = useState(false);
@@ -706,8 +773,29 @@ function FlowPreview({
 
   const clearResponse = () => {
     setSuccessMessage("");
-    setResourceUrl("");
-    setResourceButtonLabel("Open Details");
+    setResourceType("text");
+    setResourceButtons([{ label: "Open Details", url: "" }]);
+  };
+
+  const addTextResponse = () => {
+    setResourceType("text");
+    addResponseText();
+  };
+
+  const addLinkResponse = () => {
+    setResourceType("link");
+    setResourceButtons((current) =>
+      current.length ? current : [{ label: "Open Details", url: "" }]
+    );
+    addResponseText();
+  };
+
+  const updateResourceButton = (index, field, value) => {
+    setResourceButtons((current) =>
+      current.map((button, buttonIndex) =>
+        buttonIndex === index ? { ...button, [field]: value } : button
+      )
+    );
   };
 
   return (
@@ -719,12 +807,14 @@ function FlowPreview({
         <div>
           <h3 className="text-2xl font-bold text-slate-950">Response Flow</h3>
           <p className="text-sm font-medium text-slate-500">
-            This is what happens after the public comment reply.
+            {triggerType === "dm"
+              ? "This response is sent when an incoming DM matches the trigger."
+              : "This is what happens after the public comment reply."}
           </p>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      {triggerType === "comment" && <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50 px-5 py-5 sm:flex-row sm:items-center sm:px-6">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-white">
             <MessageCircle className="h-7 w-7" />
@@ -761,7 +851,7 @@ function FlowPreview({
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {openingEnabled && followRequired && (
         <FollowGateCard
@@ -782,7 +872,9 @@ function FlowPreview({
           <div className="min-w-0 flex-1">
             <h3 className="text-xl font-bold text-slate-950">Resource Message</h3>
             <p className="text-sm font-semibold text-slate-500">
-              Sent after Get Details, or after follow gate passes.
+              {triggerType === "dm"
+                ? "Sent immediately when an incoming DM matches the trigger."
+                : "Sent after Get Details, or after follow gate passes."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -811,32 +903,77 @@ function FlowPreview({
           <p className="mt-2 text-right text-sm font-semibold text-slate-400">
             {successMessage.length}/1000
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-700">
-                <Link2 className="h-4 w-4" />
-                Resource URL
-              </span>
-              <input
-                className="input border-dashed"
-                value={resourceUrl}
-                onChange={(event) => setResourceUrl(event.target.value)}
-                placeholder="https://..."
-              />
-            </label>
-            <label className="block">
-              <span className="mb-2 block text-sm font-bold text-slate-700">
-                Button label
-              </span>
-              <input
-                className="input border-dashed"
-                value={resourceButtonLabel}
-                onChange={(event) => setResourceButtonLabel(event.target.value)}
-                placeholder="Open Details"
-              />
-            </label>
-          </div>
-          {followRequired && (
+          {resourceType === "link" && (
+            <div className="mt-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                  <Link2 className="h-4 w-4" />
+                  Link buttons
+                </span>
+                {resourceButtons.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setResourceButtons((current) => [
+                        ...current,
+                        { label: `Open Link ${current.length + 1}`, url: "" },
+                      ])
+                    }
+                    className="inline-flex items-center gap-2 text-sm font-bold text-brand-600 hover:text-brand-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add button
+                  </button>
+                )}
+              </div>
+              {resourceButtons.map((button, index) => (
+                <div key={index} className="grid gap-3 rounded-lg border border-slate-200 p-4 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)_auto]">
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase text-slate-500">
+                      Button {index + 1} label
+                    </span>
+                    <input
+                      className="input"
+                      value={button.label}
+                      onChange={(event) => updateResourceButton(index, "label", event.target.value)}
+                      placeholder="Open Details"
+                      maxLength={20}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold uppercase text-slate-500">
+                      URL
+                    </span>
+                    <input
+                      className="input"
+                      value={button.url}
+                      onChange={(event) => updateResourceButton(index, "url", event.target.value)}
+                      placeholder="https://..."
+                      type="url"
+                    />
+                  </label>
+                  {resourceButtons.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setResourceButtons((current) =>
+                          current.filter((_, buttonIndex) => buttonIndex !== index)
+                        )
+                      }
+                      className="self-end rounded-lg p-3 text-red-500 hover:bg-red-50"
+                      title={`Remove button ${index + 1}`}
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <p className="text-xs font-semibold text-slate-400">
+                Add up to three link buttons.
+              </p>
+            </div>
+          )}
+          {triggerType === "comment" && followRequired && (
             <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
               <span>This resource is protected by the follow gate.</span>
@@ -863,7 +1000,8 @@ function FlowPreview({
             setAddResponseOpen(false);
             setFollowEditorOpen(true);
           }}
-          onAddText={addResponseText}
+          onAddText={addTextResponse}
+          onAddLink={addLinkResponse}
           onClose={() => setAddResponseOpen(false)}
         />
       )}
@@ -961,6 +1099,7 @@ function AddResponseModal({
   followRequired,
   onAddFollowGate,
   onAddText,
+  onAddLink,
   onClose,
 }) {
   const followDisabled = followRequired || !openingEnabled;
@@ -994,8 +1133,14 @@ function AddResponseModal({
         />
         <ResponseOption
           title="Text Message"
-          description="Send a simple text or button response"
+          description="Send a simple text-only response"
           onClick={onAddText}
+        />
+        <ResponseOption
+          title="Send Link"
+          description="Send text with up to three URL buttons"
+          icon={<Link2 className="h-6 w-6" />}
+          onClick={onAddLink}
         />
         <ResponseOption
           title="Image Message"

@@ -245,6 +245,61 @@ async function getAutomationAccount(automation) {
   return data;
 }
 
+async function getAccountById(accountId) {
+  if (!accountId) return null;
+
+  const { data, error } = await supabase
+    .from("instagram_accounts")
+    .select("id,user_email,auth_provider,instagram_user_id,instagram_account_id,messaging_owner_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url")
+    .eq("id", accountId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function bindMessagingOwnerId(account, messagingOwnerId) {
+  if (!account?.id || !messagingOwnerId) return account;
+  if (String(account.messaging_owner_id || "") === String(messagingOwnerId)) {
+    return account;
+  }
+
+  const { data, error } = await supabase
+    .from("instagram_accounts")
+    .update({ messaging_owner_id: String(messagingOwnerId) })
+    .eq("id", account.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.warn("Could not persist Instagram messaging owner ID:", error.message);
+    return { ...account, messaging_owner_id: String(messagingOwnerId) };
+  }
+
+  return data;
+}
+
+async function getAccountForMessagingOwner(messagingOwnerId) {
+  if (!messagingOwnerId) return null;
+
+  const { data: accounts = [], error } = await supabase
+    .from("instagram_accounts")
+    .select("id,user_email,auth_provider,instagram_user_id,instagram_account_id,messaging_owner_id,page_id,facebook_page_id,page_access_token,access_token,username,instagram_username,profile_picture_url");
+
+  if (error) throw error;
+  return accounts.find((account) =>
+    [
+      account.messaging_owner_id,
+      account.instagram_user_id,
+      account.instagram_account_id,
+      account.page_id,
+      account.facebook_page_id,
+    ]
+      .filter(Boolean)
+      .some((id) => String(id) === String(messagingOwnerId))
+  ) || null;
+}
+
 async function getAccountForMedia(mediaId) {
   if (!mediaId) return null;
 
@@ -331,60 +386,6 @@ async function findMatchingAutomation({ mediaId, commentText }) {
 
   if (exactMatch) {
     return { automation: exactMatch, matchedBy: "media" };
-  }
-
-  const account = await getAccountForMedia(mediaId);
-
-  if (!account?.user_email) {
-    console.log("⚠️ Media is not synced to an account:", mediaId);
-    const { data: wildcardAutomations = [], error: wildcardError } =
-      await supabase
-        .from("automations")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-
-    if (wildcardError) throw wildcardError;
-
-    const wildcardMatch = wildcardAutomations.find((rule) => {
-      const trigger = String(rule.trigger_value || "").trim().toLowerCase();
-      return (trigger === "*" || trigger === "any") &&
-        automationMatchesComment(rule, commentText);
-    });
-
-    if (wildcardMatch) {
-      console.log("⚠️ Automation matched by unsynced media fallback:", {
-        automationId: wildcardMatch.id,
-        mediaId,
-      });
-      return { automation: wildcardMatch, matchedBy: "unsynced_media_fallback" };
-    }
-
-    return { automation: null, matchedBy: "none" };
-  }
-
-  const { data: accountAutomations = [], error: accountError } = await supabase
-    .from("automations")
-    .select("*")
-    .eq("user_email", account.user_email)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
-
-  if (accountError) throw accountError;
-
-  const fallbackMatch = accountAutomations.find((rule) => {
-    const trigger = String(rule.trigger_value || "").trim();
-    return (trigger === "*" || trigger.toLowerCase() === "any") &&
-      automationMatchesComment(rule, commentText);
-  });
-
-  if (fallbackMatch) {
-    console.log("⚠️ Automation matched by account fallback:", {
-      automationId: fallbackMatch.id,
-      mediaId,
-      accountId: account.id,
-    });
-    return { automation: fallbackMatch, matchedBy: "account_fallback" };
   }
 
   return { automation: null, matchedBy: "none" };
@@ -477,6 +478,10 @@ async function sendPublicReply({ account, commentId, message }) {
 async function sendInstagramMessage({ account, recipient, text, buttons = [] }) {
   const pageId = account.page_id || account.facebook_page_id;
   const messageTargets = [
+    {
+      ownerId: account.messaging_owner_id,
+      tokens: tokensForInstagramProfile(account),
+    },
     {
       ownerId: account.instagram_user_id || account.instagram_account_id,
       tokens: tokensForInstagramProfile(account),
@@ -680,6 +685,29 @@ async function checkFollowStatus({ account, senderId }) {
 }
 
 function resourceButtons(automation) {
+  if (automation.resource_type === "text") return [];
+
+  let configuredButtons = automation.resource_buttons;
+  if (typeof configuredButtons === "string") {
+    try {
+      configuredButtons = JSON.parse(configuredButtons);
+    } catch {
+      configuredButtons = [];
+    }
+  }
+
+  const buttons = Array.isArray(configuredButtons)
+    ? configuredButtons
+        .filter((button) => button?.url)
+        .slice(0, 3)
+        .map((button) => ({
+          type: "web_url",
+          url: button.url,
+          title: button.label || "Open Link",
+        }))
+    : [];
+
+  if (buttons.length) return buttons;
   if (!automation.resource_url) return [];
 
   return [
@@ -816,7 +844,10 @@ async function sendResource({ account, automation, interaction }) {
   } catch (error) {
     if (!interaction.comment_id) throw error;
 
-    const fallbackText = [text, automation.resource_url]
+    const fallbackText = [
+      text,
+      ...resourceButtons(automation).map((button) => button.url),
+    ]
       .filter(Boolean)
       .join("\n\n");
 
@@ -991,6 +1022,10 @@ async function processComment({ body, entry, change, value, automationOverride =
       message: "No connected account found for automation",
     });
     return { status: "skipped", reason: "missing_account" };
+  }
+
+  if (entry?.id && body?.source !== "manual_retrigger") {
+    await bindMessagingOwnerId(account, entry.id);
   }
 
   await updateWebhookEvent(webhookEvent?.id, {
@@ -1211,6 +1246,7 @@ async function processComment({ body, entry, change, value, automationOverride =
 
 async function processPostback({ body, messaging }) {
   const senderId = messaging?.sender?.id;
+  const recipientId = messaging?.recipient?.id;
   const payload =
     messaging?.postback?.payload ||
     messaging?.message?.quick_reply?.payload;
@@ -1245,14 +1281,70 @@ async function processPostback({ body, messaging }) {
   if (interactionError) throw interactionError;
   if (!interaction) return;
 
-  const account =
+  let account =
+    (await getAccountById(interaction.connected_account_id)) ||
     (await getAccountForMedia(interaction.media_id)) ||
     (await getAutomationAccount(automation));
   if (!account) return;
 
+  account = await bindMessagingOwnerId(account, recipientId);
+
+  const boundMessagingOwnerId = interaction.raw_context?.messaging_owner_id;
+  if (
+    boundMessagingOwnerId &&
+    recipientId &&
+    String(boundMessagingOwnerId) !== String(recipientId)
+  ) {
+    const errorMessage =
+      "Button click belongs to a different Instagram account than the interaction";
+
+    console.warn("⚠️ Postback account mismatch:", {
+      automationId,
+      interactionId,
+      interactionAccountId: account.id,
+      recipientId,
+    });
+    await saveAutomationEvent({
+      interactionId: interaction.id,
+      automationId: automation.id,
+      connectedAccountId: account.id,
+      instagramSenderId: senderId,
+      commentId: interaction.comment_id,
+      mediaId: interaction.media_id,
+      eventType: "postback_account_mismatch",
+      direction: "inbound",
+      status: "failed",
+      payload: messaging,
+      errorMessage,
+    });
+    await upsertInteraction(interaction, {
+      current_step: "postback_account_mismatch",
+      raw_context: {
+        ...(interaction.raw_context || {}),
+        postback_error: errorMessage,
+        postback_recipient_id: recipientId || null,
+      },
+    });
+    return;
+  }
+
+  const messagingAccount = recipientId
+    ? { ...account, messaging_owner_id: recipientId }
+    : account;
+
+  if (recipientId && !boundMessagingOwnerId) {
+    interaction.raw_context = {
+      ...(interaction.raw_context || {}),
+      messaging_owner_id: recipientId,
+    };
+    await upsertInteraction(interaction, {
+      raw_context: interaction.raw_context,
+    });
+  }
+
   if (action === "GET_DETAILS") {
     if (!automation.follow_required) {
-      await sendResource({ account, automation, interaction });
+      await sendResource({ account: messagingAccount, automation, interaction });
       return;
     }
 
@@ -1275,7 +1367,7 @@ async function processPostback({ body, messaging }) {
     });
 
     if (follow.status === "following") {
-      await sendResource({ account, automation, interaction });
+      await sendResource({ account: messagingAccount, automation, interaction });
       return;
     }
 
@@ -1296,7 +1388,7 @@ async function processPostback({ body, messaging }) {
         "↩️ Resource already delivered; sending duplicate notice instead of follow gate"
       );
       await sendAlreadyDeliveredNotice({
-        account,
+        account: messagingAccount,
         automation,
         interaction: refreshedInteraction,
       });
@@ -1305,7 +1397,7 @@ async function processPostback({ body, messaging }) {
 
     try {
       await sendFollowPrompt({
-        account,
+        account: messagingAccount,
         automation,
         interaction: refreshedInteraction,
       });
@@ -1357,7 +1449,7 @@ async function processPostback({ body, messaging }) {
 
     if (follow.status === "following") {
       await sendResource({
-        account,
+        account: messagingAccount,
         automation,
         interaction: await upsertInteraction(interaction, {
           follow_status: "following",
@@ -1372,7 +1464,7 @@ async function processPostback({ body, messaging }) {
 
     try {
       await sendInstagramMessage({
-        account,
+        account: messagingAccount,
         recipient: { id: senderId },
         text: stillNotFollowingText,
         buttons: [
@@ -1391,7 +1483,7 @@ async function processPostback({ body, messaging }) {
         error.response?.data || error.message
       );
       await sendCommentPrivateReply({
-        account,
+        account: messagingAccount,
         commentId: interaction.comment_id,
         text: stillNotFollowingText,
       });
@@ -1401,6 +1493,98 @@ async function processPostback({ body, messaging }) {
       follow_status: "not_following",
     });
   }
+}
+
+function dmAutomationMatches(automation, messageText) {
+  const normalizedText = String(messageText || "").trim().toLowerCase();
+  const keywords = String(automation.trigger_value || "")
+    .split(",")
+    .map((keyword) => keyword.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (keywords.includes("*") || keywords.includes("any")) return true;
+  if (!normalizedText || keywords.length === 0) return false;
+  if (automation.trigger_match_type === "contains") {
+    return keywords.some((keyword) => normalizedText.includes(keyword));
+  }
+  return keywords.some((keyword) => normalizedText === keyword);
+}
+
+async function processInboundMessage({ messaging }) {
+  const senderId = messaging?.sender?.id;
+  const recipientId = messaging?.recipient?.id;
+  const text = messaging?.message?.text;
+
+  if (!senderId || !recipientId || !text || messaging?.message?.is_echo) return;
+
+  const account = await getAccountForMessagingOwner(recipientId);
+  if (!account?.user_email) {
+    console.warn("⚠️ No connected account found for inbound DM:", recipientId);
+    return;
+  }
+
+  const { data: automations = [], error } = await supabase
+    .from("automations")
+    .select("*")
+    .eq("user_email", account.user_email)
+    .eq("is_active", true)
+    .eq("trigger_type", "dm_keyword")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  const automation = automations.find((rule) => dmAutomationMatches(rule, text));
+  if (!automation) return;
+
+  let interaction = await findInteraction({
+    automationId: automation.id,
+    instagramSenderId: senderId,
+  });
+  interaction = await upsertInteraction(interaction, {
+    automation_id: automation.id,
+    connected_account_id: account.id,
+    instagram_sender_id: senderId,
+    comment_id: null,
+    media_id: null,
+    current_step: "dm_received",
+    follow_status: "unknown",
+    resource_delivery_status: "not_delivered",
+    resource_delivered_at: null,
+    raw_context: {
+      messaging_owner_id: recipientId,
+      inbound_message: messaging.message,
+    },
+  });
+
+  await saveAutomationEvent({
+    interactionId: interaction.id,
+    automationId: automation.id,
+    connectedAccountId: account.id,
+    instagramSenderId: senderId,
+    eventType: "dm_trigger_matched",
+    direction: "inbound",
+    payload: messaging.message,
+  });
+
+  const messagingAccount = { ...account, messaging_owner_id: recipientId };
+  if (!automation.follow_required) {
+    await sendResource({ account: messagingAccount, automation, interaction });
+    return;
+  }
+
+  const follow = await checkFollowStatus({ account, senderId });
+  interaction = await upsertInteraction(interaction, {
+    follow_status: follow.status,
+  });
+  if (follow.status === "following") {
+    await sendResource({ account: messagingAccount, automation, interaction });
+    return;
+  }
+
+  await sendFollowPrompt({
+    account: messagingAccount,
+    automation,
+    interaction,
+  });
 }
 
 async function processWebhook(body) {
@@ -1420,6 +1604,8 @@ async function processWebhook(body) {
           messaging.message?.quick_reply?.payload
         ) {
           await processPostback({ body, messaging });
+        } else if (messaging.message?.text) {
+          await processInboundMessage({ messaging });
         }
       }
     }
@@ -1491,13 +1677,9 @@ router.post("/retrigger/:automationId", async (req, res) => {
       account,
       mediaId: automation.media_id,
     });
-    const createdAt = automation.created_at
-      ? new Date(automation.created_at).getTime()
-      : 0;
     const eligible = comments.filter((comment) => {
       if (!comment?.id || !comment?.text || comment.parent_id) return false;
-      const commentTime = comment.timestamp ? new Date(comment.timestamp).getTime() : Date.now();
-      return commentTime >= createdAt && automationMatchesComment(
+      return automationMatchesComment(
         automation,
         String(comment.text).toLowerCase()
       );
@@ -1525,6 +1707,7 @@ router.post("/retrigger/:automationId", async (req, res) => {
     const summary = {
       checked: comments.length,
       eligible: eligible.length,
+      not_matching: comments.length - eligible.length,
       already_handled: 0,
       processed: 0,
       failed: 0,

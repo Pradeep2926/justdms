@@ -1,29 +1,46 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../api/api";
 
+const subscriptionCache = new Map();
+const subscriptionRequests = new Map();
+
 export function useSubscription(user) {
-  const [subscription, setSubscription] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const email = user?.email;
+  const [subscription, setSubscription] = useState(
+    () => subscriptionCache.get(email) || null
+  );
+  const [loading, setLoading] = useState(() => !subscriptionCache.has(email));
 
   const refresh = useCallback(async () => {
-    if (!user?.email) {
+    if (!email) {
       setSubscription(null);
       setLoading(false);
       return;
     }
 
     try {
-      const { data } = await api.get("/billing/subscription");
-      setSubscription(data.subscription);
+      let request = subscriptionRequests.get(email);
+      if (!request) {
+        request = api
+          .get("/billing/subscription")
+          .then(({ data }) => data.subscription)
+          .finally(() => subscriptionRequests.delete(email));
+        subscriptionRequests.set(email, request);
+      }
+      const nextSubscription = await request;
+      subscriptionCache.set(email, nextSubscription);
+      setSubscription(nextSubscription);
     } catch {
       setSubscription(null);
     } finally {
       setLoading(false);
     }
-  }, [user?.email]);
+  }, [email]);
 
   useEffect(() => {
-    setLoading(true);
+    const cached = subscriptionCache.get(email);
+    if (cached) setSubscription(cached);
+    setLoading(!cached);
     refresh();
   }, [refresh]);
 

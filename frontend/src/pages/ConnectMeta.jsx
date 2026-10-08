@@ -1,8 +1,8 @@
 import { BadgeCheck, CheckCircle2, Instagram } from "lucide-react";
 import AuthLayout from "../components/layout/AuthLayout";
 import { useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { API_BASE_URL } from "../api/api";
 import api from "../api/api";
 import { useAuth } from "../hooks/useAuth";
 
@@ -12,6 +12,8 @@ export default function ConnectMeta() {
   const instagramError = searchParams.get("instagramError");
   const switchAccount = searchParams.get("switch") === "1";
   const { user, loading, logout } = useAuth({ redirectOnFail: true });
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [connectError, setConnectError] = useState("");
 
   useEffect(() => {
     if (loading || !user?.email || switchAccount || instagramError) return;
@@ -25,20 +27,28 @@ export default function ConnectMeta() {
       });
   }, [instagramError, loading, navigate, switchAccount, user?.email]);
 
-  const connectInstagram = () => {
+  const connectInstagram = async () => {
     if (!user) {
       alert("User not logged in");
       return;
     }
 
-    const userEmail = user.email;
-
-    if (!userEmail) {
+    if (!user.email) {
       alert("User email not found");
       return;
     }
 
-    window.location.href = `${API_BASE_URL}/auth/instagram?userEmail=${encodeURIComponent(userEmail)}`;
+    try {
+      setConnectLoading(true);
+      setConnectError("");
+      const { data } = await api.post("/auth/instagram/start");
+      window.location.href = data.url;
+    } catch (error) {
+      setConnectError(
+        error.response?.data?.error || "Unable to start Instagram Login. Please sign in again."
+      );
+      setConnectLoading(false);
+    }
   };
 
   return (
@@ -47,9 +57,9 @@ export default function ConnectMeta() {
       subtitle="Only a few steps away from automating your DMs"
     >
       <div className="text-center space-y-6">
-        {instagramError && (
+        {(instagramError || connectError) && (
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-            {instagramError}
+            {instagramError || connectError}
           </div>
         )}
 
@@ -74,11 +84,11 @@ export default function ConnectMeta() {
 
         <button
           onClick={connectInstagram}
-          disabled={loading}
+          disabled={loading || connectLoading}
           className="flex min-h-14 w-full items-center justify-center gap-3 rounded-lg bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 px-5 text-base font-bold text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Instagram className="h-5 w-5" />
-          {loading ? "Checking account..." : "Login with Instagram"}
+          {loading || connectLoading ? "Connecting..." : "Login with Instagram"}
         </button>
 
         <p className="text-xs leading-5 text-slate-500">

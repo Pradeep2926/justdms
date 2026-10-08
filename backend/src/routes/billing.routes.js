@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const express = require("express");
 const axios = require("axios");
 const supabase = require("../lib/supabase");
+const { getAuthenticatedUser } = require("../lib/authClient");
 
 const router = express.Router();
 const RAZORPAY_API = "https://api.razorpay.com/v1";
@@ -46,12 +47,8 @@ function safeEqual(left, right) {
 }
 
 async function getRequestUser(req) {
-  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
-
-  if (token && supabase.auth?.getUser) {
-    const { data, error } = await supabase.auth.getUser(token);
-    if (!error && data?.user) return data.user;
-  }
+  const user = await getAuthenticatedUser(req);
+  if (user) return user;
 
   if (process.env.NODE_ENV !== "production" && req.headers["x-user-email"]) {
     return {
