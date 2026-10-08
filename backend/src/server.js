@@ -40,6 +40,7 @@ app.use(
 // Required for Meta webhooks (safe even if unused)
 app.use(
   express.json({
+    limit: "4mb",
     verify: (req, res, buf) => {
       req.rawBody = buf;
     },

@@ -65,7 +65,13 @@ export default function LinkInBio() {
       setProfile((current) => ({ ...current, ...data.profile }));
       notify("Bio profile saved.");
       return data.profile;
-    } catch (error) { notify(error.response?.data?.error || "Unable to save profile.", "error"); return null; }
+    } catch (error) {
+      const message = error.response?.status === 413
+        ? "Profile photo is too large. Choose an image smaller than 2 MB."
+        : error.response?.data?.error || "Unable to save profile.";
+      notify(message, "error");
+      return null;
+    }
     finally { setSaving(false); }
   };
 
