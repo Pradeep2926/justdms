@@ -15,6 +15,10 @@ const INITIAL_DATA = {
   automation_interactions: [],
   automation_events: [],
   subscriptions: [],
+  bio_profiles: [],
+  bio_links: [],
+  bio_visits: [],
+  bio_clicks: [],
 };
 
 function ensureDb() {
@@ -48,6 +52,10 @@ function matchesFilter(row, filter) {
   if (filter.op === "ilike") {
     const needle = String(filter.value).replaceAll("%", "").toLowerCase();
     return String(value || "").toLowerCase().includes(needle);
+  }
+
+  if (filter.op === "gte") {
+    return value >= filter.value;
   }
 
   return true;
@@ -88,6 +96,11 @@ class LocalQuery {
 
   ilike(column, value) {
     this.filters.push({ op: "ilike", column, value });
+    return this;
+  }
+
+  gte(column, value) {
+    this.filters.push({ op: "gte", column, value });
     return this;
   }
 

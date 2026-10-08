@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .icon-button {
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-brand-700;
+  }
+}
+
 @layer base {
   body {
     @apply bg-[#f4f8ff] text-ink-900 antialiased;

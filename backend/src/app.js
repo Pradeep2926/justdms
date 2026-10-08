@@ -9,5 +9,6 @@ app.use("/automation", require("./routes/automation.routes"));
 app.use("/webhook", require("./routes/webhook.routes"));
 app.use("/instagram", require("./routes/instagram.routes"));
 app.use("/dev", require("./routes/dev.routes"));
+app.use("/bio", require("./routes/bio.routes"));
 
 module.exports = app;

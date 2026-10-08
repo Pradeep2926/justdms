@@ -18,6 +18,8 @@ import TermsOfService from "./pages/TermsOfService";
 import AcceptableUse from "./pages/AcceptableUse";
 import DataRetention from "./pages/DataRetention";
 import PrivacyRights from "./pages/PrivacyRights";
+import LinkInBio from "./pages/LinkInBio";
+import PublicBio from "./pages/PublicBio";
 
 export default function App() {
   return (
@@ -48,6 +50,8 @@ export default function App() {
         <Route path="/automation" element={<Automation />} /> {/* ✅ */}
         <Route path="/settings" element={<Settings />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/link-in-bio" element={<LinkInBio />} />
+        <Route path="/:username" element={<PublicBio />} />
 
         {/* Fallback */}
         <Route path="*" element={<Home />} />

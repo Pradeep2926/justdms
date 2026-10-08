@@ -12,6 +12,7 @@ import {
   Instagram,
   MessageCircle,
   Package,
+  Link2,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
@@ -21,6 +22,7 @@ import { useSubscription } from "../../hooks/useSubscription";
 const NAV_ITEMS = [
   { to: "/dashboard", icon: Activity, label: "Dashboard" },
   { to: "/automation", icon: Zap, label: "Automations" },
+  { to: "/link-in-bio", icon: Link2, label: "Link in Bio" },
   { to: "/dashboard", icon: Users, label: "Analytics", disabled: true },
   { to: "/dashboard", icon: Package, label: "Products", disabled: true },
   { to: "/settings", icon: Settings, label: "Settings" },
