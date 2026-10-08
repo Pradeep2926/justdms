@@ -138,13 +138,6 @@ export default function Dashboard() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/connect-meta?switch=1")}
-                className="btn-secondary py-2.5 text-sm"
-              >
-                Switch account
-              </button>
-              <button
-                type="button"
                 onClick={() => navigate("/automation")}
                 className="btn-primary py-2.5 text-sm"
               >

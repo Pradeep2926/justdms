@@ -19,6 +19,13 @@ const INITIAL_DATA = {
   bio_links: [],
   bio_visits: [],
   bio_clicks: [],
+  booking_profiles: [],
+  booking_services: [],
+  booking_availability: [],
+  booking_blocked_dates: [],
+  booking_payment_settings: [],
+  bookings: [],
+  booking_payment_submissions: [],
 };
 
 function ensureDb() {

@@ -13,6 +13,7 @@ import {
   MessageCircle,
   Package,
   Link2,
+  CalendarCheck,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
@@ -22,8 +23,7 @@ import { useSubscription } from "../../hooks/useSubscription";
 const NAV_ITEMS = [
   { to: "/dashboard", icon: Activity, label: "Dashboard" },
   { to: "/automation", icon: Zap, label: "Automations" },
-  { to: "/link-in-bio", icon: Link2, label: "Link in Bio" },
-  { to: "/dashboard", icon: Users, label: "Analytics", disabled: true },
+  { to: "/dashboard", icon: Users, label: "Contacts", disabled: true },
   { to: "/dashboard", icon: Package, label: "Products", disabled: true },
   { to: "/settings", icon: Settings, label: "Settings" },
   { to: "/billing", icon: CreditCard, label: "Billing" },
@@ -93,6 +93,21 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
             </NavLink>
           )
         )}
+        <p className="px-3 pb-1 pt-5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Creator tools</p>
+        {[
+          { to: "/link-in-bio", icon: Link2, label: "Link in Bio" },
+          { to: "/appointment-booking", icon: CalendarCheck, label: "Appointment Booking" },
+        ].map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-base font-semibold transition ${isActive ? "bg-gradient-to-r from-cyan-50 via-blue-50 to-violet-50 text-brand-700 shadow-sm ring-1 ring-brand-100" : "text-slate-600 hover:bg-slate-50 hover:text-brand-700"}`}
+          >
+            <Icon className="h-5 w-5" />
+            {label}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="border-t border-slate-100 p-4">

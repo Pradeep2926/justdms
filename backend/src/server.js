@@ -9,6 +9,8 @@ const automationRoutes = require("./routes/automation.routes");
 const webhookRoutes = require("./routes/webhook.routes");
 const billingRoutes = require("./routes/billing.routes");
 const bioRoutes = require("./routes/bio.routes");
+const bookingRoutes = require("./routes/booking.routes");
+const { expireBookingHolds } = bookingRoutes;
 
 const app = express();
 const allowedOrigins = [
@@ -58,6 +60,7 @@ app.use("/automation", automationRoutes);
 app.use("/webhook", webhookRoutes);
 app.use("/billing", billingRoutes);
 app.use("/bio", bioRoutes);
+app.use("/booking", bookingRoutes);
 
 /**
  * =============================
@@ -84,3 +87,8 @@ server.on("error", (error) => {
   console.error("❌ Backend listen error:", error);
   process.exitCode = 1;
 });
+
+const bookingExpiryTimer = setInterval(() => {
+  expireBookingHolds().catch((error) => console.error("Booking expiration failed:", error));
+}, 60 * 1000);
+bookingExpiryTimer.unref();

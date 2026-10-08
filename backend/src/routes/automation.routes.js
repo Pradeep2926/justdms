@@ -35,6 +35,31 @@ function isMissingColumnError(error, column) {
     .includes(`'${column}'`);
 }
 
+async function runWithLegacyColumnFallback(record, write) {
+  const nextRecord = { ...record };
+  const optionalColumns = [
+    "name",
+    "opening_dm_enabled",
+    "retrigger_enabled",
+    "resource_buttons",
+  ];
+
+  for (let attempt = 0; attempt <= optionalColumns.length; attempt += 1) {
+    const result = await write(nextRecord);
+    if (!result.error) return result;
+
+    const missingColumn = optionalColumns.find(
+      (column) =>
+        Object.prototype.hasOwnProperty.call(nextRecord, column) &&
+        isMissingColumnError(result.error, column)
+    );
+    if (!missingColumn) return result;
+    delete nextRecord[missingColumn];
+  }
+
+  return write(nextRecord);
+}
+
 async function requirePro(req, res, next) {
   try {
     const user = await getAuthenticatedUser(req);
@@ -354,32 +379,14 @@ router.post("/", requirePro, async (req, res) => {
       is_active: is_active !== false,
     };
 
-    let { data, error } = await supabase
-      .from("automations")
-      .insert([automationRecord])
-      .select()
-      .single();
-
-    if (
-      error &&
-      (isMissingColumnError(error, "name") ||
-        isMissingColumnError(error, "opening_dm_enabled") ||
-        isMissingColumnError(error, "retrigger_enabled") ||
-        isMissingColumnError(error, "resource_buttons"))
-    ) {
-      const fallbackRecord = { ...automationRecord };
-      delete fallbackRecord.name;
-      delete fallbackRecord.opening_dm_enabled;
-      delete fallbackRecord.retrigger_enabled;
-      delete fallbackRecord.resource_buttons;
-      const fallback = await supabase
+    const { data, error } = await runWithLegacyColumnFallback(
+      automationRecord,
+      (record) => supabase
         .from("automations")
-        .insert([fallbackRecord])
+        .insert([record])
         .select()
-        .single();
-      data = fallback.data;
-      error = fallback.error;
-    }
+        .single()
+    );
 
     if (error) {
       console.error("❌ Supabase insert error:", error);
@@ -426,32 +433,15 @@ router.patch("/:id", requirePro, async (req, res) => {
     if (ownershipError) throw ownershipError;
     if (!ownedAutomation) return res.status(404).json({ error: "Automation not found." });
 
-    let { data, error } = await supabase
-      .from("automations")
-      .update(updates)
-      .eq("id", id)
-      .select()
-      .single();
-
-    if (
-      error &&
-      (isMissingColumnError(error, "name") ||
-        isMissingColumnError(error, "opening_dm_enabled") ||
-        isMissingColumnError(error, "retrigger_enabled"))
-    ) {
-      const fallbackUpdates = { ...updates };
-      delete fallbackUpdates.name;
-      delete fallbackUpdates.opening_dm_enabled;
-      delete fallbackUpdates.retrigger_enabled;
-      const fallback = await supabase
+    const { data, error } = await runWithLegacyColumnFallback(
+      updates,
+      (record) => supabase
         .from("automations")
-        .update(fallbackUpdates)
+        .update(record)
         .eq("id", id)
         .select()
-        .single();
-      data = fallback.data;
-      error = fallback.error;
-    }
+        .single()
+    );
 
     if (error) {
       console.error("❌ Automation update error:", error);

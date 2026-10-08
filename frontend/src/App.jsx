@@ -20,6 +20,8 @@ import DataRetention from "./pages/DataRetention";
 import PrivacyRights from "./pages/PrivacyRights";
 import LinkInBio from "./pages/LinkInBio";
 import PublicBio from "./pages/PublicBio";
+import AppointmentBooking from "./pages/AppointmentBooking";
+import PublicBooking from "./pages/PublicBooking";
 
 export default function App() {
   return (
@@ -51,6 +53,8 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/link-in-bio" element={<LinkInBio />} />
+        <Route path="/appointment-booking" element={<AppointmentBooking />} />
+        <Route path="/book/:username" element={<PublicBooking />} />
         <Route path="/:username" element={<PublicBio />} />
 
         {/* Fallback */}
