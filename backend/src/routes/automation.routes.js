@@ -1,6 +1,7 @@
 const express = require("express");
 const supabase = require("../lib/supabase");
 const { getAuthenticatedUser } = require("../lib/authClient");
+const { normalizeEmail, ownsAutomationEmail } = require("../lib/automationAccess");
 
 const router = express.Router();
 
@@ -85,10 +86,36 @@ async function requirePro(req, res, next) {
   }
 }
 
-router.get("/metrics/:userEmail", async (req, res) => {
+async function requireAutomationUser(req, res, next) {
   try {
-    const { userEmail } = req.params;
-    const days = Number(req.query.days);
+    const user = await getAuthenticatedUser(req);
+    if (!user?.email) {
+      return res.status(401).json({ error: "Your session could not be verified." });
+    }
+
+    req.automationUser = user;
+    return next();
+  } catch (error) {
+    console.error("Automation authentication failed:", error);
+    return res.status(500).json({ error: "Unable to verify your session." });
+  }
+}
+
+function requireRequestedEmailOwner(req, res, next) {
+  if (!ownsAutomationEmail(req.automationUser, req.params.userEmail)) {
+    return res.status(403).json({ error: "You cannot access another user's automations." });
+  }
+  return next();
+}
+
+router.get(
+  "/metrics/:userEmail",
+  requireAutomationUser,
+  requireRequestedEmailOwner,
+  async (req, res) => {
+    try {
+      const userEmail = normalizeEmail(req.automationUser.email);
+      const days = Number(req.query.days);
 
     if (!userEmail) {
       return res.status(400).json({ error: "Missing userEmail" });
@@ -163,15 +190,20 @@ router.get("/metrics/:userEmail", async (req, res) => {
     metrics.followers_verified = verifiedFollowers.size;
 
     return res.json(metrics);
-  } catch (err) {
-    console.error("Automation metrics fetch error:", err);
-    return res.status(500).json({ error: "Failed to load metrics" });
+    } catch (err) {
+      console.error("Automation metrics fetch error:", err);
+      return res.status(500).json({ error: "Failed to load metrics" });
+    }
   }
-});
+);
 
-router.get("/:userEmail", async (req, res) => {
-  try {
-    const { userEmail } = req.params;
+router.get(
+  "/:userEmail",
+  requireAutomationUser,
+  requireRequestedEmailOwner,
+  async (req, res) => {
+    try {
+      const userEmail = normalizeEmail(req.automationUser.email);
 
     if (!userEmail) {
       return res.status(400).json({ error: "Missing userEmail" });
@@ -268,11 +300,12 @@ router.get("/:userEmail", async (req, res) => {
         ...metrics.get(automation.id),
       }))
     );
-  } catch (err) {
-    console.error("❌ Automation fetch error:", err);
-    return res.status(500).json({ error: "Server error" });
+    } catch (err) {
+      console.error("❌ Automation fetch error:", err);
+      return res.status(500).json({ error: "Server error" });
+    }
   }
-});
+);
 
 /**
  * CREATE AUTOMATION
@@ -455,7 +488,7 @@ router.patch("/:id", requirePro, async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAutomationUser, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -463,7 +496,23 @@ router.delete("/:id", async (req, res) => {
       return res.status(400).json({ error: "Missing automation id" });
     }
 
-    const { error } = await supabase.from("automations").delete().eq("id", id);
+    const { data: ownedAutomation, error: ownershipError } = await supabase
+      .from("automations")
+      .select("id")
+      .eq("id", id)
+      .eq("user_email", normalizeEmail(req.automationUser.email))
+      .maybeSingle();
+
+    if (ownershipError) throw ownershipError;
+    if (!ownedAutomation) {
+      return res.status(404).json({ error: "Automation not found." });
+    }
+
+    const { error } = await supabase
+      .from("automations")
+      .delete()
+      .eq("id", id)
+      .eq("user_email", normalizeEmail(req.automationUser.email));
 
     if (error) {
       console.error("❌ Automation delete error:", error);
