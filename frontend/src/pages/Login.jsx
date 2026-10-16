@@ -53,8 +53,7 @@ export default function Login() {
       localStorage.removeItem("pendingProfile");
     }
 
-    setLoading(false);
-    navigate("/dashboard");
+    window.location.replace("/dashboard");
   }
 
   async function handleGoogleLogin() {

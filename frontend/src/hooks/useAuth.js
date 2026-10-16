@@ -48,6 +48,22 @@ export function useAuth({ redirectOnFail = false } = {}) {
 
   useEffect(() => {
     let mounted = true;
+    let redirectTimer;
+
+    const finishWithUser = (nextUser) => {
+      if (!mounted || !nextUser) return;
+      clearTimeout(redirectTimer);
+      sessionPromise = Promise.resolve(nextUser);
+      setUser(nextUser);
+      setLoading(false);
+      syncProfile(nextUser).catch(() => {});
+    };
+
+    const authListener = supabase.auth.onAuthStateChange
+      ? supabase.auth.onAuthStateChange((_event, session) => {
+          if (session?.user) finishWithUser(session.user);
+        }).data
+      : null;
 
     async function loadUser() {
       const user = await getCurrentUser();
@@ -56,20 +72,25 @@ export function useAuth({ redirectOnFail = false } = {}) {
 
       if (!user) {
         setUser(null);
-        setLoading(false);
-        if (redirectOnFail) window.location.href = "/login";
+        // OAuth callbacks can reach the dashboard just before Supabase finishes
+        // persisting the new session. Give the SIGNED_IN event a brief window.
+        redirectTimer = setTimeout(() => {
+          if (!mounted) return;
+          setLoading(false);
+          if (redirectOnFail) window.location.replace("/login");
+        }, 1500);
         return;
       }
 
-      setUser(user);
-      setLoading(false);
-      syncProfile(user).catch(() => {});
+      finishWithUser(user);
     }
 
     loadUser();
 
     return () => {
       mounted = false;
+      clearTimeout(redirectTimer);
+      authListener?.subscription?.unsubscribe();
     };
   }, [redirectOnFail]);
 
