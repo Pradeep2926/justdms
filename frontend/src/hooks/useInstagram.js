@@ -4,6 +4,26 @@ import api from "../api/api";
 const cacheKey = (email) => `justdms:instagram-dashboard:${email || "guest"}`;
 const memoryCache = new Map();
 const inflightRequests = new Map();
+const inflightSyncRequests = new Map();
+const lastAutoSyncAt = new Map();
+const AUTO_SYNC_TTL_MS = 60000;
+
+function cacheDashboard(email, data) {
+  memoryCache.set(email, data);
+  window.sessionStorage.setItem(cacheKey(email), JSON.stringify(data));
+}
+
+function requestSync(email) {
+  let request = inflightSyncRequests.get(email);
+  if (!request) {
+    request = api
+      .post(`/instagram/sync/${encodeURIComponent(email)}`)
+      .then(({ data }) => data)
+      .finally(() => inflightSyncRequests.delete(email));
+    inflightSyncRequests.set(email, request);
+  }
+  return request;
+}
 
 function readCachedDashboard(email) {
   if (!email || typeof window === "undefined") return null;
@@ -41,8 +61,7 @@ export function useInstagram(email) {
       }
       const data = await request;
       setDashboard(data);
-      memoryCache.set(email, data);
-      window.sessionStorage.setItem(cacheKey(email), JSON.stringify(data));
+      cacheDashboard(email, data);
     } catch (err) {
       setDashboard((current) =>
         current || { connected: false, account: null, media: [], comments: [] }
@@ -59,10 +78,9 @@ export function useInstagram(email) {
     try {
       setSyncing(true);
       setError("");
-      const { data } = await api.post(`/instagram/sync/${encodeURIComponent(email)}`);
+      const data = await requestSync(email);
       setDashboard(data);
-      memoryCache.set(email, data);
-      window.sessionStorage.setItem(cacheKey(email), JSON.stringify(data));
+      cacheDashboard(email, data);
     } catch (err) {
       setError(err.response?.data?.error || err.message || "Failed to sync Instagram");
     } finally {
@@ -71,13 +89,36 @@ export function useInstagram(email) {
   };
 
   useEffect(() => {
+    let active = true;
     const cached = readCachedDashboard(email);
     setDashboard(cached);
     setLoading(!cached);
-    fetchDashboard();
+
+    const loadAndRefresh = async () => {
+      await fetchDashboard();
+      if (!active || !email) return;
+
+      const lastSync = lastAutoSyncAt.get(email) || 0;
+      if (Date.now() - lastSync < AUTO_SYNC_TTL_MS) return;
+      lastAutoSyncAt.set(email, Date.now());
+
+      try {
+        const data = await requestSync(email);
+        if (!active) return;
+        setDashboard(data);
+        cacheDashboard(email, data);
+      } catch (err) {
+        console.warn("Background Instagram refresh failed", err);
+      }
+    };
+
+    loadAndRefresh();
     const interval = setInterval(fetchDashboard, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [email]);
 
   return {

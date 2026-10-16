@@ -1,6 +1,10 @@
 const express = require("express");
 const axios = require("axios");
 const supabase = require("../lib/supabase");
+const {
+  parseAutomationPostback,
+  withMessagingSender,
+} = require("../lib/webhookPayload");
 
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
@@ -33,11 +37,6 @@ function renderTemplate(text, context = {}) {
     "{{first_name}}",
     context.firstName || "there"
   );
-}
-
-function parsePayload(payload) {
-  const [action, automationId, interactionId] = String(payload || "").split(":");
-  return { action, automationId, interactionId };
 }
 
 function automationMatchesComment(rule, commentText) {
@@ -1250,7 +1249,12 @@ async function processPostback({ body, messaging }) {
   const payload =
     messaging?.postback?.payload ||
     messaging?.message?.quick_reply?.payload;
-  const { action, automationId, interactionId } = parsePayload(payload);
+  const parsedPayload = parseAutomationPostback(payload);
+  if (!parsedPayload) {
+    console.log("Ignoring unsupported Instagram postback payload");
+    return;
+  }
+  const { action, automationId, interactionId } = parsedPayload;
 
   console.log("👆 Button clicked:", { action, automationId, interactionId });
 
@@ -1331,6 +1335,7 @@ async function processPostback({ body, messaging }) {
   const messagingAccount = recipientId
     ? { ...account, messaging_owner_id: recipientId }
     : account;
+  const messagingInteraction = withMessagingSender(interaction, senderId);
 
   if (recipientId && !boundMessagingOwnerId) {
     interaction.raw_context = {
@@ -1344,7 +1349,11 @@ async function processPostback({ body, messaging }) {
 
   if (action === "GET_DETAILS") {
     if (!automation.follow_required) {
-      await sendResource({ account: messagingAccount, automation, interaction });
+      await sendResource({
+        account: messagingAccount,
+        automation,
+        interaction: messagingInteraction,
+      });
       return;
     }
 
@@ -1367,7 +1376,11 @@ async function processPostback({ body, messaging }) {
     });
 
     if (follow.status === "following") {
-      await sendResource({ account: messagingAccount, automation, interaction });
+      await sendResource({
+        account: messagingAccount,
+        automation,
+        interaction: messagingInteraction,
+      });
       return;
     }
 
@@ -1390,7 +1403,7 @@ async function processPostback({ body, messaging }) {
       await sendAlreadyDeliveredNotice({
         account: messagingAccount,
         automation,
-        interaction: refreshedInteraction,
+        interaction: withMessagingSender(refreshedInteraction, senderId),
       });
       return;
     }
@@ -1399,7 +1412,7 @@ async function processPostback({ body, messaging }) {
       await sendFollowPrompt({
         account: messagingAccount,
         automation,
-        interaction: refreshedInteraction,
+        interaction: withMessagingSender(refreshedInteraction, senderId),
       });
     } catch (error) {
       const errorMessage =
@@ -1451,9 +1464,12 @@ async function processPostback({ body, messaging }) {
       await sendResource({
         account: messagingAccount,
         automation,
-        interaction: await upsertInteraction(interaction, {
-          follow_status: "following",
-        }),
+        interaction: withMessagingSender(
+          await upsertInteraction(interaction, {
+            follow_status: "following",
+          }),
+          senderId
+        ),
       });
       return;
     }
