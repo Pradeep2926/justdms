@@ -6,24 +6,14 @@ import AppLayout from "../components/layout/AppLayout";
 import { DashboardLoader } from "../components/common/PageLoader";
 import api from "../api/api";
 import {
-  AlertCircle, ArrowRight, BarChart3, CalendarCheck, CalendarDays,
-  CheckCircle2, ExternalLink, Image, Instagram, Link2, MessageCircle,
-  MousePointerClick, Play, Send, Settings, UserCheck, Users, Zap,
+  AlertCircle, ArrowRight, CalendarCheck,
+  CheckCircle2, ExternalLink, Image, Instagram, Link2,
+  Play, Send, Settings, Zap,
 } from "lucide-react";
-
-const EMPTY_METRICS = {
-  messages_sent: 0,
-  total_clicks: 0,
-  comments_engaged: 0,
-  followers_verified: 0,
-};
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
-  const [metricDays, setMetricDays] = useState("7");
-  const [metrics, setMetrics] = useState(EMPTY_METRICS);
-  const [metricsLoading, setMetricsLoading] = useState(false);
   const [automations, setAutomations] = useState([]);
   const { ig, media, connected, loading: igLoading, error } = useInstagram(user?.email);
   const loading = authLoading || igLoading;
@@ -33,27 +23,22 @@ export default function Dashboard() {
     let active = true;
 
     const loadDashboardData = async () => {
-      setMetricsLoading(true);
-      const [metricsResult, automationsResult] = await Promise.allSettled([
-        api.get(`/automation/metrics/${encodeURIComponent(user.email)}`, {
-          params: metricDays ? { days: metricDays } : {},
-        }),
-        api.get(`/automation/${encodeURIComponent(user.email)}`),
-      ]);
+      const automationsResult = await api
+        .get(`/automation/${encodeURIComponent(user.email)}`)
+        .then((response) => ({ status: "fulfilled", value: response }))
+        .catch(() => ({ status: "rejected" }));
 
       if (!active) return;
-      setMetrics(metricsResult.status === "fulfilled" ? metricsResult.value.data : EMPTY_METRICS);
       setAutomations(
         automationsResult.status === "fulfilled" && Array.isArray(automationsResult.value.data)
           ? automationsResult.value.data
           : []
       );
-      setMetricsLoading(false);
     };
 
     loadDashboardData();
     return () => { active = false; };
-  }, [user?.email, connected, metricDays]);
+  }, [user?.email, connected]);
 
   const activeAutomations = useMemo(
     () => automations.filter((item) => item.is_active !== false).slice(0, 4),
@@ -64,7 +49,7 @@ export default function Dashboard() {
     <AppLayout
       title={connected && ig ? `Welcome back, @${ig.username}` : "Welcome to JustDMs"}
       subtitle={connected ? "Grow your audience with simple, powerful automations." : "Connect Instagram to get started."}
-      action={connected ? <HeaderActions ig={ig} metricDays={metricDays} setMetricDays={setMetricDays} /> : null}
+      action={connected ? <HeaderActions ig={ig} /> : null}
     >
       {loading && <DashboardLoader />}
 
@@ -88,13 +73,6 @@ export default function Dashboard() {
             <QuickAction icon={Settings} title="Account Settings" description="Update profile and support details" tone="slate" onClick={() => navigate("/settings")} />
           </section>
 
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric icon={Send} label="Messages sent" value={metrics.messages_sent} loading={metricsLoading} />
-            <Metric icon={MousePointerClick} label="Button clicks" value={metrics.total_clicks} loading={metricsLoading} />
-            <Metric icon={MessageCircle} label="Comments engaged" value={metrics.comments_engaged} loading={metricsLoading} />
-            <Metric icon={UserCheck} label="Followers verified" value={metrics.followers_verified} loading={metricsLoading} />
-          </section>
-
           <section className="grid gap-6 xl:grid-cols-2">
             <DashboardPanel icon={Image} title="Recent posts" onAction={() => navigate("/automation")}>
               {media.length
@@ -108,34 +86,15 @@ export default function Dashboard() {
             </DashboardPanel>
           </section>
 
-          <section className="grid gap-3 sm:grid-cols-3">
-            <AccountStat icon={Users} label="Followers" value={ig.followers ?? ig.followers_count} />
-            <AccountStat icon={BarChart3} label="Following" value={ig.following ?? ig.follows_count} />
-            <AccountStat icon={Image} label="Published posts" value={ig.media_count ?? media.length} />
-          </section>
         </div>
       )}
     </AppLayout>
   );
 }
 
-function HeaderActions({ ig, metricDays, setMetricDays }) {
+function HeaderActions({ ig }) {
   return (
     <div className="flex items-center gap-3">
-      <label className="relative hidden sm:block">
-        <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-        <select
-          className="h-11 appearance-none rounded-lg border border-slate-200 bg-white pl-9 pr-9 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-          value={metricDays}
-          onChange={(event) => setMetricDays(event.target.value)}
-          aria-label="Dashboard date range"
-        >
-          <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
-          <option value="">All time</option>
-        </select>
-      </label>
       {ig?.profile_picture_url ? (
         <img src={ig.profile_picture_url} alt="" className="h-11 w-11 rounded-lg object-cover ring-2 ring-white shadow-sm" />
       ) : (
@@ -205,15 +164,6 @@ function QuickAction({ icon: Icon, title, description, tone, onClick }) {
   );
 }
 
-function Metric({ icon: Icon, label, value, loading }) {
-  return (
-    <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Icon className="h-5 w-5" /></span>
-      <div><p className="text-xs font-semibold uppercase text-slate-500">{label}</p><p className="mt-1 text-2xl font-extrabold text-slate-950">{loading ? "—" : Number(value || 0).toLocaleString()}</p></div>
-    </div>
-  );
-}
-
 function DashboardPanel({ icon: Icon, title, onAction, children }) {
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -247,10 +197,6 @@ function AutomationRow({ automation, onClick }) {
       <ArrowRight className="h-4 w-4 text-slate-400 transition group-hover:translate-x-0.5" />
     </button>
   );
-}
-
-function AccountStat({ icon: Icon, label, value }) {
-  return <div className="flex items-center gap-3 rounded-lg border border-slate-200/80 bg-white/70 px-4 py-3"><Icon className="h-4 w-4 text-slate-500" /><span className="text-sm text-slate-500">{label}</span><strong className="ml-auto text-sm text-slate-900">{Number(value || 0).toLocaleString()}</strong></div>;
 }
 
 function EmptyState({ text }) {
