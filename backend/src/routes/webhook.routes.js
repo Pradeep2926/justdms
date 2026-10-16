@@ -9,6 +9,7 @@ const {
   isRetryableMetaError,
   metaErrorDetails,
 } = require("../lib/deliveryError");
+const { publicResourceUrl } = require("../lib/resourceLink");
 
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
@@ -703,9 +704,9 @@ function resourceButtons(automation) {
     ? configuredButtons
         .filter((button) => button?.url)
         .slice(0, 3)
-        .map((button) => ({
+        .map((button, buttonIndex) => ({
           type: "web_url",
-          url: button.url,
+          url: publicResourceUrl(automation.id, buttonIndex),
           title: button.label || "Open Link",
         }))
     : [];
@@ -716,7 +717,7 @@ function resourceButtons(automation) {
   return [
     {
       type: "web_url",
-      url: automation.resource_url,
+      url: publicResourceUrl(automation.id, 0),
       title: automation.resource_button_label || "Open Details",
     },
   ];

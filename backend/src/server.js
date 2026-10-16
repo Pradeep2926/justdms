@@ -10,6 +10,7 @@ const webhookRoutes = require("./routes/webhook.routes");
 const billingRoutes = require("./routes/billing.routes");
 const bioRoutes = require("./routes/bio.routes");
 const bookingRoutes = require("./routes/booking.routes");
+const resourceRoutes = require("./routes/resource.routes");
 const { expireBookingHolds } = bookingRoutes;
 
 const app = express();
@@ -61,6 +62,7 @@ app.use("/webhook", webhookRoutes);
 app.use("/billing", billingRoutes);
 app.use("/bio", bioRoutes);
 app.use("/booking", bookingRoutes);
+app.use("/resource", resourceRoutes);
 
 /**
  * =============================

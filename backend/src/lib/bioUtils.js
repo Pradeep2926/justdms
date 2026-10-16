@@ -3,7 +3,7 @@ const crypto = require("crypto");
 const RESERVED_USERNAMES = new Set([
   "api", "admin", "app", "auth", "automation", "billing", "connect-meta",
   "dashboard", "data-deletion", "data-retention", "forgot-password", "help",
-  "home", "link-in-bio", "login", "privacy", "privacy-rights", "register",
+  "go", "home", "link-in-bio", "login", "privacy", "privacy-rights", "register",
   "refund-policy", "reset-password", "settings", "support", "terms", "verify",
   "webhook", "www",
 ]);

@@ -22,6 +22,7 @@ import LinkInBio from "./pages/LinkInBio";
 import PublicBio from "./pages/PublicBio";
 import AppointmentBooking from "./pages/AppointmentBooking";
 import PublicBooking from "./pages/PublicBooking";
+import ResourceRedirect from "./pages/ResourceRedirect";
 
 export default function App() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
         <Route path="/link-in-bio" element={<LinkInBio />} />
         <Route path="/appointment-booking" element={<AppointmentBooking />} />
         <Route path="/book/:username" element={<PublicBooking />} />
+        <Route path="/go/:token" element={<ResourceRedirect />} />
         <Route path="/:username" element={<PublicBio />} />
 
         {/* Fallback */}
