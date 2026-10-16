@@ -5,6 +5,10 @@ const {
   parseAutomationPostback,
   withMessagingSender,
 } = require("../lib/webhookPayload");
+const {
+  isRetryableMetaError,
+  metaErrorDetails,
+} = require("../lib/deliveryError");
 
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
@@ -833,6 +837,8 @@ async function sendResource({ account, automation, interaction }) {
   }
 
   const text = automation.success_message || automation.message;
+  let primaryError = null;
+  let fallbackError = null;
   try {
     await sendInstagramMessage({
       account,
@@ -841,24 +847,77 @@ async function sendResource({ account, automation, interaction }) {
       buttons: resourceButtons(automation),
     });
   } catch (error) {
-    if (!interaction.comment_id) throw error;
+    primaryError = error;
 
-    const fallbackText = [
-      text,
-      ...resourceButtons(automation).map((button) => button.url),
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    if (interaction.comment_id) {
+      const fallbackText = [
+        text,
+        ...resourceButtons(automation).map((button) => button.url),
+      ]
+        .filter(Boolean)
+        .join("\n\n");
 
-    console.warn(
-      "⚠️ Resource DM failed; trying comment private reply fallback:",
-      error.response?.data || error.message
-    );
-    await sendCommentPrivateReply({
-      account,
-      commentId: interaction.comment_id,
-      text: fallbackText,
+      console.warn(
+        "⚠️ Resource DM failed; trying comment private reply fallback:",
+        metaErrorDetails(error)
+      );
+      try {
+        await sendCommentPrivateReply({
+          account,
+          commentId: interaction.comment_id,
+          text: fallbackText,
+        });
+      } catch (error) {
+        fallbackError = error;
+      }
+    }
+  }
+
+  if (primaryError && (!interaction.comment_id || fallbackError)) {
+    const primary = metaErrorDetails(primaryError);
+    const fallback = fallbackError ? metaErrorDetails(fallbackError) : null;
+    const retryable =
+      isRetryableMetaError(primaryError) ||
+      (fallbackError && isRetryableMetaError(fallbackError));
+
+    console.error("❌ Resource delivery failed:", {
+      interactionId: interaction.id,
+      primary,
+      fallback,
+      retryable,
     });
+    await saveAutomationEvent({
+      interactionId: interaction.id,
+      automationId: automation.id,
+      connectedAccountId: account.id,
+      instagramSenderId: interaction.instagram_sender_id,
+      commentId: interaction.comment_id,
+      mediaId: interaction.media_id,
+      eventType: "resource_delivery_failed",
+      direction: "outbound",
+      status: "failed",
+      payload: {
+        primary_error: primary,
+        fallback_error: fallback,
+        retryable,
+        retry_on_next_click: true,
+      },
+      errorMessage: primary.message,
+    });
+    await upsertInteraction(interaction, {
+      current_step: "resource_delivery_failed",
+      resource_delivery_status: "failed",
+      raw_context: {
+        ...(interaction.raw_context || {}),
+        resource_delivery_error: {
+          primary,
+          fallback,
+          retryable,
+          failed_at: new Date().toISOString(),
+        },
+      },
+    });
+    throw fallbackError || primaryError;
   }
 
   console.log("✅ Resource sent");
