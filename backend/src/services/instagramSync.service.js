@@ -60,6 +60,54 @@ async function instagramGraphGet(path, accessToken, params = {}) {
   }
 }
 
+async function subscribeInstagramWebhooks(account) {
+  const instagramUserId = account?.instagram_user_id || account?.instagram_account_id;
+  const accessToken = account?.access_token;
+  if (!instagramUserId || !accessToken) {
+    throw new Error("Instagram account and access token are required for webhook subscription.");
+  }
+
+  try {
+    const response = await axios.post(
+      `${INSTAGRAM_GRAPH_BASE_URL}/${instagramUserId}/subscribed_apps`,
+      null,
+      {
+        params: {
+          subscribed_fields: "comments,messages",
+          access_token: accessToken,
+        },
+        timeout: 20000,
+      }
+    );
+
+    if (response.data?.success !== true) {
+      throw new Error("Instagram did not confirm the webhook subscription.");
+    }
+
+    return true;
+  } catch (error) {
+    throw new Error(metaError(error, "Unable to subscribe the Instagram account to webhooks."));
+  }
+}
+
+async function ensureInstagramWebhookSubscription(userEmail) {
+  const account = await getAccountByEmail(userEmail);
+  if (!account) throw new Error("Instagram account not found.");
+  if (account.auth_provider !== "instagram") {
+    throw new Error("Webhook repair currently supports direct Instagram connections only.");
+  }
+
+  await subscribeInstagramWebhooks(account);
+  const { data, error } = await supabase
+    .from("instagram_accounts")
+    .update({ webhook_enabled: true, updated_at: new Date().toISOString() })
+    .eq("id", account.id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 async function exchangeInstagramCodeForToken({ code, appId, appSecret, redirectUri }) {
   const form = new URLSearchParams({
     client_id: appId,
@@ -694,6 +742,11 @@ async function connectInstagramDirectAccount({ userEmail, code, instagramConfig 
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + token.expiresIn * 1000).toISOString();
 
+  const webhookEnabled = await subscribeInstagramWebhooks({
+    instagram_user_id: instagramUserId,
+    access_token: token.accessToken,
+  });
+
   const saved = await saveAccount({
     user_email: userEmail,
     user_id: userEmail,
@@ -720,7 +773,7 @@ async function connectInstagramDirectAccount({ userEmail, code, instagramConfig 
     expires_at: expiresAt,
     token_expires_at: expiresAt,
     token_status: "active",
-    webhook_enabled: false,
+    webhook_enabled: webhookEnabled,
     connected_at: now,
     last_sync: now,
   });
@@ -791,6 +844,7 @@ module.exports = {
   connectInstagramAccount,
   connectInstagramAccountWithToken,
   connectInstagramDirectAccount,
+  ensureInstagramWebhookSubscription,
   exchangeInstagramCodeForToken,
   exchangeCodeForToken,
   listInstagramBusinessAccounts,
