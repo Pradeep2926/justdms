@@ -125,6 +125,11 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
                   <Crown className="h-3 w-3" /> Pro plan
                 </p>
               )}
+              {!isPro && (
+                <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  Free plan
+                </p>
+              )}
             </div>
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
           </div>

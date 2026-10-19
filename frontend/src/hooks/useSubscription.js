@@ -44,10 +44,16 @@ export function useSubscription(user) {
     refresh();
   }, [refresh]);
 
+  const expiresAt = subscription?.ends_at || subscription?.current_end;
+  const isPro = subscription?.status === "active" &&
+    (!expiresAt || new Date(expiresAt).getTime() > Date.now());
+
   return {
     subscription,
     loading,
-    isPro: subscription?.status === "active",
+    isPro,
+    plan: isPro ? "pro" : "free",
+    activeAutomationLimit: isPro ? null : 2,
     refresh,
   };
 }

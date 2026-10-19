@@ -154,7 +154,9 @@ export default function Billing() {
     }
   };
 
-  const active = subscription?.status === "active";
+  const accessEnd = subscription?.ends_at || subscription?.current_end;
+  const active = subscription?.status === "active" &&
+    (!accessEnd || new Date(accessEnd).getTime() > Date.now());
   const renewalDate = subscription?.ends_at
     ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(
         new Date(subscription.ends_at)

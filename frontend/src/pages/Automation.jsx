@@ -5,7 +5,7 @@ import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
 import { AutomationLoader } from "../components/common/PageLoader";
 import api from "../api/api";
-import { ArrowRight, CalendarDays, Crown, Filter, Instagram, Plus, Search, Workflow, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Filter, Instagram, Plus, Search, Sparkles, Workflow, X } from "lucide-react";
 import { useInstagram } from "../hooks/useInstagram";
 import { useSubscription } from "../hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 export default function Automation() {
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
   const navigate = useNavigate();
-  const { isPro, loading: subscriptionLoading } = useSubscription(user);
+  const { isPro, activeAutomationLimit, loading: subscriptionLoading } = useSubscription(user);
   const [automations, setAutomations] = useState([]);
   const [loadingAutomations, setLoadingAutomations] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
@@ -52,12 +52,17 @@ export default function Automation() {
   }, []);
 
   useEffect(() => {
-    if (user?.email && isPro && connected) {
+    if (user?.email && connected) {
       fetchAutomations(user.email);
     } else if (user?.email && !subscriptionLoading && !instagramLoading) {
       setLoadingAutomations(false);
     }
-  }, [user?.email, isPro, connected, instagramLoading, subscriptionLoading, fetchAutomations]);
+  }, [user?.email, connected, instagramLoading, subscriptionLoading, fetchAutomations]);
+
+  const activeAutomationCount = automations.filter(
+    (automation) => automation.is_active !== false
+  ).length;
+  const freeLimitReached = !isPro && activeAutomationCount >= activeAutomationLimit;
 
   const refreshAutomations = async () => {
     if (user?.email) {
@@ -113,25 +118,6 @@ export default function Automation() {
     );
   }
 
-  if (!isPro) {
-    return (
-      <AppLayout title="Automations" subtitle="Create Instagram workflows with JustDMs Pro">
-        <section className="mx-auto max-w-2xl rounded-lg border border-amber-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-            <Crown className="h-7 w-7" />
-          </span>
-          <h2 className="mt-5 text-2xl font-bold text-slate-950">Automation is included with Pro</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-600">
-            Subscribe to create unlimited comment-to-DM automations, keyword triggers, follow gates, and lead delivery flows.
-          </p>
-          <button type="button" onClick={() => navigate("/billing")} className="btn-primary mt-7">
-            <Crown className="h-4 w-4" /> View Pro plan
-          </button>
-        </section>
-      </AppLayout>
-    );
-  }
-
   if (!connected) {
     return (
       <AppLayout title="Automations" subtitle="Build and manage Instagram workflows">
@@ -170,6 +156,26 @@ export default function Automation() {
       subtitle={ig ? `Manage comment-to-DM flows for @${ig.username}` : "Comment → DM workflows powered by Meta APIs"}
     >
       <div className="space-y-6">
+        {!isPro && (
+          <section className={`flex flex-col gap-4 rounded-lg border px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${freeLimitReached ? "border-amber-200 bg-amber-50" : "border-brand-200 bg-brand-50/60"}`}>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700 shadow-sm">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-bold text-slate-950">JustDMs Free</p>
+                <p className="mt-0.5 text-sm text-slate-600">
+                  {activeAutomationCount} of {activeAutomationLimit} active automations used
+                  {freeLimitReached ? ". Pause one to activate another, or upgrade for unlimited automations." : ". Comment-to-DM, follow gates, Link in Bio, and booking are included."}
+                </p>
+              </div>
+            </div>
+            <button type="button" onClick={() => navigate("/billing")} className="btn-secondary shrink-0 bg-white">
+              <Crown className="h-4 w-4" /> Upgrade to Pro
+            </button>
+          </section>
+        )}
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-slate-900 shadow-sm ring-1 ring-slate-200">

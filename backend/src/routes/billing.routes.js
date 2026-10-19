@@ -3,6 +3,7 @@ const express = require("express");
 const axios = require("axios");
 const supabase = require("../lib/supabase");
 const { getAuthenticatedUser } = require("../lib/authClient");
+const { isActiveProSubscription } = require("../lib/automationAccess");
 
 const router = express.Router();
 const RAZORPAY_API = "https://api.razorpay.com/v1";
@@ -185,7 +186,10 @@ router.post("/subscription", requireUser, async (req, res) => {
     }
 
     const existing = await findSubscriptionByEmail(req.billingUser.email);
-    if (["active", "authenticated", "pending", "halted"].includes(existing?.status)) {
+    if (
+      isActiveProSubscription(existing) ||
+      ["authenticated", "pending", "halted"].includes(existing?.status)
+    ) {
       return res.status(409).json({
         error: "A subscription already exists for this account.",
       });

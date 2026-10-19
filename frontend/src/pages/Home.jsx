@@ -8,6 +8,9 @@ import {
   CheckCircle2,
   Crown,
   Sparkles,
+  Link2,
+  CalendarCheck,
+  UserCheck,
 } from "lucide-react";
 import logoUrl from "../assets/justdms-logo.png";
 
@@ -36,6 +39,21 @@ const FEATURES = [
     icon: Sparkles,
     title: "AI Replies",
     desc: "Use context-aware AI to answer common customer questions in your brand voice.",
+  },
+  {
+    icon: UserCheck,
+    title: "Follow Before Delivery",
+    desc: "Ask visitors to follow your profile before sharing the requested resource.",
+  },
+  {
+    icon: Link2,
+    title: "Link in Bio",
+    desc: "Build a branded public page for your links, offers, resources, and services.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Appointment Booking",
+    desc: "Publish services, availability, and a shareable booking page for your audience.",
   },
 ];
 
@@ -105,7 +123,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
             <a href="#pricing" className="btn-primary text-base px-8 py-4">
-              View Pro Plan
+              View Plans
               <ArrowRight className="w-5 h-5" />
             </a>
           </div>
@@ -128,14 +146,27 @@ export default function Home() {
             <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
               Simple pricing
             </p>
-            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">One plan. Every automation tool.</h2>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Start free. Upgrade when you grow.</h2>
             <p className="mx-auto mt-4 max-w-2xl text-slate-600">
-              Choose monthly flexibility or save with annual billing. Cancel future renewals at any time.
+              Launch your first automations at no cost, then unlock unlimited workflows with Pro.
             </p>
           </div>
 
-          <div className="mx-auto mt-12 grid max-w-3xl gap-6 md:grid-cols-2">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
             {[
+              {
+                name: "Free",
+                price: "₹0",
+                period: "/forever",
+                note: "No card required",
+                features: [
+                  "2 active DM automations",
+                  "Comment and keyword triggers",
+                  "Ask for a follow before delivery",
+                  "Link in Bio",
+                  "Appointment booking",
+                ],
+              },
               { name: "Monthly", price: "₹199", period: "/month", note: "Flexible monthly billing" },
               { name: "Yearly", price: "₹1,999", period: "/year", note: "Save ₹389 every year", featured: true },
             ].map((plan) => (
@@ -146,14 +177,15 @@ export default function Home() {
                   </span>
                 )}
                 <span className="inline-flex items-center gap-2 text-sm font-bold uppercase text-brand-700">
-                  <Crown className="h-4 w-4" /> JustDMs Pro · {plan.name}
+                  {plan.name === "Free" ? <Sparkles className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
+                  {plan.name === "Free" ? "JustDMs Free" : `JustDMs Pro · ${plan.name}`}
                 </span>
                 <p className="mt-5 text-4xl font-extrabold text-slate-950">
                   {plan.price}<span className="text-sm font-medium text-slate-500">{plan.period}</span>
                 </p>
                 <p className="mt-2 text-sm font-semibold text-emerald-700">{plan.note}</p>
                 <div className="mt-6 space-y-3">
-                  {["All automation features", "Unlimited automations", "Unlimited DMs*", "Analytics and lead collection", "AI Replies"].map((feature) => (
+                  {(plan.features || ["Unlimited automations", "Unlimited DMs*", "Follow-gate flows", "Link in Bio and booking", "Analytics, lead collection, and AI Replies"]).map((feature) => (
                     <span key={feature} className="flex items-start gap-2 text-sm text-slate-700">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
                       {feature}
@@ -161,7 +193,7 @@ export default function Home() {
                   ))}
                 </div>
                 <Link to="/register" className="btn-primary mt-8 w-full py-3.5">
-                  Choose {plan.name} <ArrowRight className="h-4 w-4" />
+                  {plan.name === "Free" ? "Start Free" : `Choose ${plan.name}`} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             ))}
@@ -253,8 +285,8 @@ export default function Home() {
             Ready to stop missing DMs?
           </h2>
           <p className="text-white/80 mt-3 mb-8">
-            Create your account, choose a Pro billing cycle, and start building
-            Instagram automations in minutes.
+            Create your free account and launch your first Instagram automations
+            in minutes. Upgrade only when you need more.
           </p>
           <Link
             to="/register"

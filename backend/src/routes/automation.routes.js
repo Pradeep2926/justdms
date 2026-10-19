@@ -1,7 +1,12 @@
 const express = require("express");
 const supabase = require("../lib/supabase");
 const { getAuthenticatedUser } = require("../lib/authClient");
-const { normalizeEmail, ownsAutomationEmail } = require("../lib/automationAccess");
+const {
+  normalizeEmail,
+  ownsAutomationEmail,
+  automationEntitlements,
+  canActivateAutomation,
+} = require("../lib/automationAccess");
 
 const router = express.Router();
 
@@ -61,7 +66,7 @@ async function runWithLegacyColumnFallback(record, write) {
   return write(nextRecord);
 }
 
-async function requirePro(req, res, next) {
+async function requireAutomationPlan(req, res, next) {
   try {
     const user = await getAuthenticatedUser(req);
     if (!user?.email) {
@@ -70,20 +75,35 @@ async function requirePro(req, res, next) {
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
-      .select("status")
+      .select("status,ends_at,current_end")
       .eq("user_email", user.email)
       .maybeSingle();
     if (subscriptionError) throw subscriptionError;
-    if (subscription?.status !== "active") {
-      return res.status(403).json({ error: "JustDMs Pro is required to manage automations." });
-    }
-
     req.automationUser = user;
+    req.automationEntitlements = automationEntitlements(subscription);
     return next();
   } catch (error) {
     console.error("Automation subscription check failed:", error);
     return res.status(500).json({ error: "Unable to verify your subscription." });
   }
+}
+
+async function countActiveAutomations(userEmail, excludeId = null) {
+  const { data = [], error } = await supabase
+    .from("automations")
+    .select("id,is_active")
+    .eq("user_email", normalizeEmail(userEmail));
+  if (error) throw error;
+  return data.filter(
+    (automation) => automation.id !== excludeId && automation.is_active !== false
+  ).length;
+}
+
+function freeLimitResponse(res) {
+  return res.status(403).json({
+    code: "FREE_AUTOMATION_LIMIT",
+    error: "The Free plan supports up to 2 active automations. Pause one or upgrade to Pro.",
+  });
 }
 
 async function requireAutomationUser(req, res, next) {
@@ -311,7 +331,7 @@ router.get(
  * CREATE AUTOMATION
  * POST /automation
  */
-router.post("/", requirePro, async (req, res) => {
+router.post("/", requireAutomationPlan, async (req, res) => {
   try {
     console.log("👉 Automation payload:", req.body);
 
@@ -344,6 +364,16 @@ router.post("/", requirePro, async (req, res) => {
 
     const normalizedTriggerType =
       trigger_type === "dm_keyword" ? "dm_keyword" : "comment";
+
+    if (is_active !== false) {
+      const activeCount = await countActiveAutomations(req.automationUser.email);
+      if (!canActivateAutomation({
+        entitlements: req.automationEntitlements,
+        activeCount,
+      })) {
+        return freeLimitResponse(res);
+      }
+    }
 
     if (
       !user_id ||
@@ -436,7 +466,7 @@ router.post("/", requirePro, async (req, res) => {
   }
 });
 
-router.patch("/:id", requirePro, async (req, res) => {
+router.patch("/:id", requireAutomationPlan, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = {};
@@ -459,12 +489,22 @@ router.patch("/:id", requirePro, async (req, res) => {
 
     const { data: ownedAutomation, error: ownershipError } = await supabase
       .from("automations")
-      .select("id")
+      .select("id,is_active")
       .eq("id", id)
       .eq("user_email", req.automationUser.email)
       .maybeSingle();
     if (ownershipError) throw ownershipError;
     if (!ownedAutomation) return res.status(404).json({ error: "Automation not found." });
+
+    if (updates.is_active === true && ownedAutomation.is_active === false) {
+      const activeCount = await countActiveAutomations(req.automationUser.email, id);
+      if (!canActivateAutomation({
+        entitlements: req.automationEntitlements,
+        activeCount,
+      })) {
+        return freeLimitResponse(res);
+      }
+    }
 
     const { data, error } = await runWithLegacyColumnFallback(
       updates,
