@@ -22,13 +22,39 @@ export default function LinkInBio() {
   const dragId = useRef(null);
 
   const publicUrl = useMemo(() => profile.username ? `${window.location.origin}/@${profile.username}` : "", [profile.username]);
+  const draftKey = user?.id ? `justdms.bio-draft.${user.id}` : null;
   const notify = (message, type = "success") => { setNotice({ message, type }); window.setTimeout(() => setNotice(null), 3500); };
+
+  const updateProfileDraft = (updates) => {
+    setProfile((current) => {
+      const next = { ...current, ...updates };
+      if (draftKey) {
+        localStorage.setItem(draftKey, JSON.stringify({
+          username: next.username,
+          display_name: next.display_name,
+          description: next.description,
+          profile_picture_url: next.profile_picture_url,
+          theme: next.theme,
+        }));
+      }
+      return next;
+    });
+  };
 
   const load = useCallback(async () => {
     if (!user) return;
     try {
       const [{ data }, analyticsResponse] = await Promise.all([api.get("/bio/me"), api.get("/bio/analytics")]);
-      setProfile(data.profile ? { ...emptyProfile, ...data.profile } : { ...emptyProfile, display_name: user.user_metadata?.full_name || "" });
+      const serverProfile = data.profile
+        ? { ...emptyProfile, ...data.profile }
+        : { ...emptyProfile, display_name: user.user_metadata?.full_name || "" };
+      let savedDraft = null;
+      try {
+        savedDraft = JSON.parse(localStorage.getItem(`justdms.bio-draft.${user.id}`) || "null");
+      } catch {
+        localStorage.removeItem(`justdms.bio-draft.${user.id}`);
+      }
+      setProfile(savedDraft ? { ...serverProfile, ...savedDraft } : serverProfile);
       setLinks(data.links || []);
       setAnalytics(analyticsResponse.data);
     } catch (error) { notify(error.response?.data?.error || "Unable to load Link in Bio.", "error"); }
@@ -63,6 +89,7 @@ export default function LinkInBio() {
       setSaving(true);
       const { data } = await api.put("/bio/profile", profile);
       setProfile((current) => ({ ...current, ...data.profile }));
+      if (draftKey) localStorage.removeItem(draftKey);
       notify("Bio profile saved.");
       return data.profile;
     } catch (error) {
@@ -80,7 +107,7 @@ export default function LinkInBio() {
     if (!file) return;
     if (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024) return notify("Choose an image smaller than 2 MB.", "error");
     const reader = new FileReader();
-    reader.onload = () => setProfile((current) => ({ ...current, profile_picture_url: reader.result }));
+    reader.onload = () => updateProfileDraft({ profile_picture_url: reader.result });
     reader.readAsDataURL(file);
   };
 
@@ -129,10 +156,10 @@ export default function LinkInBio() {
   return (
     <AppLayout title="Link in Bio" subtitle="Build, publish, and measure your smart bio page" action={<button className="btn-primary" onClick={togglePublish}><span className={`h-2 w-2 rounded-full ${profile.is_published ? "bg-emerald-300" : "bg-white/60"}`} />{profile.is_published ? "Unpublish" : "Publish"}</button>}>
       {notice && <div className={`fixed right-4 top-20 z-50 flex max-w-sm items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-xl ${notice.type === "error" ? "bg-rose-600" : "bg-emerald-600"}`}>{notice.type === "error" ? <X className="h-4 w-4" /> : <Check className="h-4 w-4" />}{notice.message}</div>}
-      <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_390px]">
-        <div className="space-y-6">
+      <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="min-w-0 space-y-6">
           <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-brand-50/80 via-white to-violet-50/70 px-5 py-5 sm:px-7"><div className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-brand-700 shadow-sm ring-1 ring-brand-100"><UserRound className="h-5 w-5" /></span><div><h2 className="text-lg font-bold text-slate-950">Profile</h2><p className="mt-0.5 text-sm text-slate-500">Choose how your public page appears.</p></div></div><button onClick={saveProfile} disabled={saving || usernameState.checking} className="btn-secondary"><Save className="h-4 w-4" />{saving ? "Saving..." : "Save"}</button></div>
+            <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-r from-brand-50/80 via-white to-violet-50/70 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7"><div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700 shadow-sm ring-1 ring-brand-100"><UserRound className="h-5 w-5" /></span><div><h2 className="text-lg font-bold text-slate-950">Profile</h2><p className="mt-0.5 text-sm text-slate-500">Choose how your public page appears.</p></div></div><button onClick={saveProfile} disabled={saving || usernameState.checking} className="btn-secondary w-full justify-center sm:w-auto"><Save className="h-4 w-4" />{saving ? "Saving..." : "Save profile"}</button></div>
             <div className="p-5 sm:p-7">
             <div className="grid gap-5 sm:grid-cols-[140px_1fr]">
               <label className="group flex h-36 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-brand-300 bg-brand-50 text-brand-700">
@@ -140,12 +167,12 @@ export default function LinkInBio() {
                 <input type="file" accept="image/*" className="sr-only" onChange={uploadImage} />
               </label>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div><Field label="Username" value={profile.username} onChange={(value) => setProfile({ ...profile, username: value.toLowerCase().replace(/[^a-z0-9._-]/g, "") })} prefix="@" placeholder="yourname" /><div className={`mt-2 flex min-h-5 items-center gap-1.5 text-xs font-semibold ${usernameState.available === false ? "text-rose-600" : "text-emerald-600"}`}>{usernameState.checking ? <><LoaderCircle className="h-3.5 w-3.5 animate-spin text-slate-400" /><span className="text-slate-400">Checking availability...</span></> : usernameState.available === true ? <><CheckCircle2 className="h-3.5 w-3.5" />Username is available</> : usernameState.available === false ? <><XCircle className="h-3.5 w-3.5" />{usernameState.error || "Username is already taken"}</> : null}</div></div>
-                <Field label="Display name" value={profile.display_name || ""} onChange={(value) => setProfile({ ...profile, display_name: value })} placeholder="Your name or brand" />
-                <label className="sm:col-span-2"><span className="mb-2 block text-sm font-bold text-slate-700">Description</span><textarea className="input min-h-24 resize-y py-3" maxLength={300} value={profile.description || ""} onChange={(event) => setProfile({ ...profile, description: event.target.value })} placeholder="Tell visitors what you do." /><span className="mt-1 block text-right text-xs text-slate-400">{(profile.description || "").length}/300</span></label>
+                <div><Field label="Username" value={profile.username} onChange={(value) => updateProfileDraft({ username: value.toLowerCase().replace(/[^a-z0-9._-]/g, "") })} prefix="@" placeholder="yourname" /><div className={`mt-2 flex min-h-5 items-center gap-1.5 text-xs font-semibold ${usernameState.available === false ? "text-rose-600" : "text-emerald-600"}`}>{usernameState.checking ? <><LoaderCircle className="h-3.5 w-3.5 animate-spin text-slate-400" /><span className="text-slate-400">Checking availability...</span></> : usernameState.available === true ? <><CheckCircle2 className="h-3.5 w-3.5" />Username is available</> : usernameState.available === false ? <><XCircle className="h-3.5 w-3.5" />{usernameState.error || "Username is already taken"}</> : null}</div></div>
+                <Field label="Display name" value={profile.display_name || ""} onChange={(value) => updateProfileDraft({ display_name: value })} placeholder="Your name or brand" />
+                <label className="sm:col-span-2"><span className="mb-2 block text-sm font-bold text-slate-700">Description</span><textarea className="input min-h-24 resize-y py-3" maxLength={300} value={profile.description || ""} onChange={(event) => updateProfileDraft({ description: event.target.value })} placeholder="Tell visitors what you do." /><span className="mt-1 block text-right text-xs text-slate-400">{(profile.description || "").length}/300</span></label>
               </div>
             </div>
-            <div className="mt-7 border-t border-slate-100 pt-6"><p className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700"><Palette className="h-4 w-4 text-brand-600" />Choose theme</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{Object.entries(BIO_THEMES).map(([key, theme]) => <button key={key} type="button" onClick={() => setProfile({ ...profile, theme: key })} className={`overflow-hidden rounded-lg border p-2 text-left transition hover:-translate-y-0.5 hover:shadow-md ${profile.theme === key ? "border-brand-500 bg-brand-50 ring-2 ring-brand-100" : "border-slate-200"}`}><span className={`block h-14 rounded-md ${theme.page}`} /><span className="mt-2 flex items-center justify-between text-xs font-bold text-slate-700">{theme.label}{profile.theme === key && <Check className="h-3.5 w-3.5 text-brand-600" />}</span></button>)}</div></div>
+            <div className="mt-7 border-t border-slate-100 pt-6"><p className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-700"><Palette className="h-4 w-4 text-brand-600" />Choose theme</p><div className="grid grid-cols-2 gap-3 min-[480px]:grid-cols-3 sm:grid-cols-5">{Object.entries(BIO_THEMES).map(([key, theme]) => <button key={key} type="button" onClick={() => updateProfileDraft({ theme: key })} className={`overflow-hidden rounded-lg border p-2 text-left transition hover:-translate-y-0.5 hover:shadow-md ${profile.theme === key ? "border-brand-500 bg-brand-50 ring-2 ring-brand-100" : "border-slate-200"}`}><span className={`block h-14 rounded-md ${theme.page}`} /><span className="mt-2 flex items-center justify-between text-xs font-bold text-slate-700">{theme.label}{profile.theme === key && <Check className="h-3.5 w-3.5 text-brand-600" />}</span></button>)}</div></div>
             </div>
           </section>
 
@@ -158,7 +185,27 @@ export default function LinkInBio() {
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-7"><div className="mb-5 flex items-center gap-3"><BarChart3 className="h-5 w-5 text-brand-600" /><div><h2 className="text-lg font-bold text-slate-950">Analytics</h2><p className="text-sm text-slate-500">Last 30 days, without exposing visitor identities.</p></div></div><div className="grid gap-3 sm:grid-cols-2"><Metric label="Profile views" value={analytics.total_views} /><Metric label="Link clicks" value={analytics.total_clicks} /></div><div className="mt-5 grid gap-5 lg:grid-cols-[1.5fr_1fr]"><div><p className="mb-3 text-sm font-bold text-slate-700">Daily trend</p><div className="flex h-36 items-end gap-1 rounded-lg bg-slate-50 p-3">{analytics.daily.map((day) => { const max = Math.max(1, ...analytics.daily.map((item) => Math.max(item.views, item.clicks))); return <div key={day.date} className="flex h-full flex-1 items-end gap-px" title={`${day.date}: ${day.views} views, ${day.clicks} clicks`}><span className="w-1/2 rounded-t bg-brand-300" style={{ height: `${Math.max(3, day.views / max * 100)}%` }} /><span className="w-1/2 rounded-t bg-violet-500" style={{ height: `${Math.max(3, day.clicks / max * 100)}%` }} /></div>; })}</div><div className="mt-2 flex gap-4 text-xs text-slate-500"><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-brand-300" />Views</span><span><i className="mr-1 inline-block h-2 w-2 rounded-full bg-violet-500" />Clicks</span></div></div><div><p className="mb-3 text-sm font-bold text-slate-700">Top links</p><div className="space-y-2">{analytics.top_links.map((link, index) => <div key={link.id} className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2"><span className="text-xs font-bold text-slate-400">{index + 1}</span><span className="min-w-0 flex-1 truncate text-sm font-semibold">{link.title}</span><span className="text-sm font-bold text-brand-700">{link.clicks}</span></div>)}{analytics.top_links.length === 0 && <p className="text-sm text-slate-400">No clicks yet.</p>}</div></div></div></section>
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start"><div className="rounded-lg border border-slate-200 bg-white p-4 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.38)]"><div className="mb-4 flex items-center justify-between"><span className="flex items-center gap-2 text-sm font-bold text-slate-800"><Smartphone className="h-4 w-4 text-brand-600" />Live preview</span><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${profile.is_published ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{profile.is_published ? "Live" : "Draft"}</span></div><div className="mx-auto aspect-[9/17] max-h-[calc(100vh-14rem)] min-h-[460px] overflow-y-auto rounded-[28px] border-[7px] border-slate-900 bg-slate-900 shadow-2xl"><BioPreview profile={profile} links={links} /></div>{publicUrl && <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2"><div className="truncate rounded-lg bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-600">{publicUrl}</div><button title="Copy link" onClick={copyLink} className="icon-button border border-slate-200"><Copy className="h-4 w-4" /></button><button title="Show QR code" onClick={() => setShowQr(true)} className="icon-button border border-slate-200"><QrCode className="h-4 w-4" /></button></div>}</div></aside>
+        <aside className="order-first min-w-0 lg:order-none lg:sticky lg:top-24 lg:self-start">
+          <div className="w-full min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 shadow-[0_18px_50px_-28px_rgba(15,23,42,0.38)] sm:p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="flex items-center gap-2 text-sm font-bold text-slate-800"><Smartphone className="h-4 w-4 text-brand-600" />Live preview</span>
+              <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${profile.is_published ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{profile.is_published ? "Live" : "Draft"}</span>
+            </div>
+            {publicUrl && (
+              <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <p className="mb-1.5 px-1 text-[10px] font-bold uppercase text-slate-400">Your public link</p>
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
+                  <div className="min-w-0 truncate rounded-md bg-white px-3 py-2.5 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{publicUrl}</div>
+                  <button title="Copy link" onClick={copyLink} className="icon-button border border-slate-200 bg-white"><Copy className="h-4 w-4" /></button>
+                  <button title="Show QR code" onClick={() => setShowQr(true)} className="icon-button border border-slate-200 bg-white"><QrCode className="h-4 w-4" /></button>
+                </div>
+              </div>
+            )}
+            <div className="mx-auto aspect-[9/17] w-full max-w-[340px] min-h-[420px] overflow-y-auto rounded-[26px] border-[6px] border-slate-900 bg-slate-900 shadow-2xl sm:max-w-[360px] lg:max-h-[calc(100vh-18rem)] lg:min-h-[460px]">
+              <BioPreview profile={profile} links={links} />
+            </div>
+          </div>
+        </aside>
       </div>
       {showQr && <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onClick={() => setShowQr(false)}><div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between"><h2 className="text-lg font-bold">Share QR code</h2><button className="icon-button" onClick={() => setShowQr(false)}><X className="h-5 w-5" /></button></div><img className="mx-auto mt-5 h-56 w-56" alt={`QR code for ${publicUrl}`} src={`https://api.qrserver.com/v1/create-qr-code/?size=448x448&data=${encodeURIComponent(publicUrl)}`} /><p className="mt-4 break-all text-sm text-slate-500">{publicUrl}</p><button className="btn-primary mt-5 w-full justify-center" onClick={copyLink}><Copy className="h-4 w-4" />Copy link</button></div></div>}
     </AppLayout>
