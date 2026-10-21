@@ -75,7 +75,7 @@ async function requireAutomationPlan(req, res, next) {
 
     const { data: subscription, error: subscriptionError } = await supabase
       .from("subscriptions")
-      .select("status,ends_at,current_end")
+      .select("status,ends_at,current_end,referral_access_end")
       .eq("user_email", user.email)
       .maybeSingle();
     if (subscriptionError) throw subscriptionError;

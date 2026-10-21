@@ -14,6 +14,7 @@ import {
   Package,
   Link2,
   CalendarCheck,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", icon: Package, label: "Products", disabled: true },
   { to: "/settings", icon: Settings, label: "Settings" },
   { to: "/billing", icon: CreditCard, label: "Billing" },
+  { to: "/refer", icon: Gift, label: "Refer & Earn" },
 ];
 
 export default function Sidebar({ mobileOpen = false, onNavigate }) {

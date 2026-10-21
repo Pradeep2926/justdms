@@ -3,7 +3,7 @@ import logoUrl from "../assets/justdms-logo.png";
 
 export default function PrivacyPolicy() {
   return (
-    <LegalPage title="Privacy & Data Policy" updated="October 3, 2026">
+    <LegalPage title="Privacy & Data Policy" updated="October 20, 2026">
       <Section title="Overview">
         <p>
           JustDMs helps Instagram Business and Creator accounts automate
@@ -31,6 +31,10 @@ export default function PrivacyPolicy() {
             Technical logs used to diagnose errors, webhook processing, and Meta
             API responses.
           </li>
+          <li>
+            Referral codes, referral attribution, signup status, and limited
+            payment confirmation details used to operate Refer & Earn.
+          </li>
         </ul>
       </Section>
 
@@ -43,6 +47,7 @@ export default function PrivacyPolicy() {
           <li>Prevent duplicate replies, duplicate DMs, and duplicate deliveries.</li>
           <li>Maintain automation history, delivery status, and debugging logs.</li>
           <li>Improve reliability, security, and product functionality.</li>
+          <li>Attribute eligible referrals, prevent abuse, and grant referral rewards.</li>
         </ul>
       </Section>
 

@@ -19,6 +19,7 @@ function publicUser(user) {
   return {
     id: user.id,
     email: user.email,
+    created_at: user.created_at || null,
     email_confirmed_at: user.email_confirmed_at || null,
     user_metadata: user.user_metadata || {},
   };
@@ -117,6 +118,7 @@ export const localSupabase = {
       const user = {
         id: crypto.randomUUID(),
         email: normalizedEmail,
+        created_at: new Date().toISOString(),
         password,
         email_confirmed_at: null,
         verification_code: "123456",

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import api from "../api/api";
 
 let sessionPromise;
 
@@ -42,6 +43,19 @@ async function syncProfile(user) {
   });
 }
 
+async function syncReferral() {
+  const code = localStorage.getItem("justdmsReferralCode");
+  if (!code) return;
+  try {
+    await api.post("/referrals/claim", { code });
+    localStorage.removeItem("justdmsReferralCode");
+  } catch (error) {
+    if ([404, 409].includes(error.response?.status)) {
+      localStorage.removeItem("justdmsReferralCode");
+    }
+  }
+}
+
 export function useAuth({ redirectOnFail = false } = {}) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +71,7 @@ export function useAuth({ redirectOnFail = false } = {}) {
       setUser(nextUser);
       setLoading(false);
       syncProfile(nextUser).catch(() => {});
+      syncReferral().catch(() => {});
     };
 
     const authListener = supabase.auth.onAuthStateChange

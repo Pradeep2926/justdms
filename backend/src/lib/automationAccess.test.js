@@ -4,6 +4,7 @@ const {
   normalizeEmail,
   ownsAutomationEmail,
   isActiveProSubscription,
+  isActivePaidSubscription,
   automationEntitlements,
   canActivateAutomation,
 } = require("./automationAccess");
@@ -47,6 +48,18 @@ test("keeps active unexpired Pro subscriptions unlimited", () => {
       now
     ),
     { plan: "pro", isPro: true, activeAutomationLimit: null }
+  );
+});
+
+test("grants Pro while referral access is active without changing billing status", () => {
+  const now = Date.parse("2030-01-15T00:00:00Z");
+  assert.equal(
+    isActiveProSubscription({ status: "inactive", referral_access_end: "2030-01-29T00:00:00Z" }, now),
+    true
+  );
+  assert.equal(
+    isActivePaidSubscription({ status: "inactive", referral_access_end: "2030-01-29T00:00:00Z" }, now),
+    false
   );
 });
 

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import {
-  ChevronDown,
+  ArrowLeft,
+  Check,
   ChevronUp,
   Crown,
   Image,
@@ -69,19 +70,19 @@ export default function AutomationBuilder({
 }) {
   const editing = Boolean(initialAutomation?.id);
   const [automationName, setAutomationName] = useState(
-    initialAutomation?.name || ""
+    initialAutomation?.name || "Untitled automation"
   );
   const [triggerType, setTriggerType] = useState(
-    initialAutomation?.trigger_type === "dm_keyword" ? "dm" : "comment"
+    initialAutomation
+      ? initialAutomation.trigger_type === "dm_keyword" ? "dm" : "comment"
+      : null
   );
   const [triggerMatchType, setTriggerMatchType] = useState(
     initialAutomation?.trigger_match_type === "contains" ? "contains" : "exact"
   );
   const [retriggering, setRetriggering] = useState(false);
   const [retriggerResult, setRetriggerResult] = useState(null);
-  const [isActive, setIsActive] = useState(
-    initialAutomation?.is_active !== false
-  );
+  const isActive = initialAutomation?.is_active !== false;
   const [selectedPost, setSelectedPost] = useState(
     initialAutomation?.media_id || ""
   );
@@ -164,6 +165,7 @@ export default function AutomationBuilder({
       ));
   const canSave =
     automationName.trim() &&
+    triggerType &&
     triggerValue &&
     successMessage.trim() &&
     linkButtonsComplete &&
@@ -200,7 +202,7 @@ export default function AutomationBuilder({
     resource_button_label:
       resourceType === "link" ? resourceButtons[0]?.label || "Open Details" : "",
     resource_buttons: resourceType === "link" ? resourceButtons : [],
-    is_active: isActive,
+    is_active: editing ? isActive : true,
   };
 
   const saveAutomation = async () => {
@@ -210,7 +212,9 @@ export default function AutomationBuilder({
           ? "Add response message text."
           : !linkButtonsComplete
             ? "Add a label and URL for every link button."
-            : triggerType === "dm"
+            : !triggerType
+              ? "Choose a trigger type."
+              : triggerType === "dm"
               ? "Add a name and at least one DM keyword."
               : "Add a name, select a post, add a keyword, and add at least one comment reply."
       );
@@ -266,56 +270,47 @@ export default function AutomationBuilder({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="flex flex-col gap-4 border-b border-slate-100 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="mx-auto max-w-5xl overflow-hidden rounded-lg border border-slate-200 bg-slate-50/70 shadow-sm">
+      <div className="flex flex-col gap-4 border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+            title="Back to automations"
           >
-            <ChevronUp className="h-5 w-5 -rotate-90" />
-            <span className="hidden sm:inline">Back</span>
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <span className="hidden h-7 w-px bg-slate-200 sm:block" />
-          <span className="rounded-full bg-pink-50 px-3 py-1 text-xs font-bold text-pink-600">
-            Instagram
-          </span>
-          <h2 className="truncate text-lg font-bold text-slate-950 sm:text-xl">
-            {automationName.trim() || (editing ? "Edit Automation" : "Create Automation")}
-          </h2>
+          <div className="min-w-0 flex-1">
+            <input
+              value={automationName}
+              onChange={(event) => setAutomationName(event.target.value)}
+              aria-label="Automation name"
+              maxLength={80}
+              className="w-full max-w-xl border-0 bg-transparent p-0 text-lg font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:ring-0 sm:text-xl"
+              placeholder="Untitled automation"
+            />
+            <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">Set a trigger, then choose what JustDMs should send.</p>
+          </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2">
           {triggerType === "comment" && <button
             type="button"
             onClick={retriggerMissedComments}
             disabled={retriggering}
             title="Check the selected post for comments this automation missed"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-700 transition hover:border-brand-400 hover:bg-brand-100 disabled:cursor-wait disabled:opacity-60"
+            className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-bold text-brand-700 transition hover:bg-brand-100 disabled:cursor-wait disabled:opacity-60 sm:flex-none"
           >
             <RotateCcw className={`h-4 w-4 ${retriggering ? "animate-spin" : ""}`} />
             {retriggering ? "Checking..." : "Re-Trigger"}
           </button>}
-          <div className="flex min-h-11 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4">
-            <span className="text-sm font-bold text-slate-700">Status</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isActive}
-              aria-label="Automation status"
-              onClick={() => setIsActive((current) => !current)}
-              className={`relative h-7 w-12 rounded-full transition ${isActive ? "bg-emerald-500" : "bg-slate-300"}`}
-            >
-              <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition ${isActive ? "left-6" : "left-1"}`} />
-            </button>
-          </div>
           <button
             type="button"
             onClick={saveAutomation}
             disabled={saving || !canSave}
-            className="btn-primary col-span-2 min-h-11 justify-center sm:col-span-1"
+            className="btn-primary min-h-10 flex-1 justify-center px-4 sm:flex-none"
           >
-            {saving ? "Saving..." : editing ? "Save Changes" : "Create Automation"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
@@ -337,32 +332,19 @@ export default function AutomationBuilder({
         </div>
       )}
 
-      <div className="space-y-8 px-5 py-6 sm:px-8 sm:py-8">
-        <BuilderSection step="1" title="Name your automation">
-          <label className="block">
-            <span className="mb-2 block text-sm font-bold text-slate-700">
-              Name
-            </span>
-            <input
-              className="input text-lg"
-              value={automationName}
-              onChange={(event) => setAutomationName(event.target.value)}
-              placeholder="Example: Accenture referral link"
-            />
-          </label>
-        </BuilderSection>
-
-        <BuilderSection step="2" title="Select trigger">
+      <div className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
+        <BuilderSection step="1" title={triggerType ? "Trigger" : "Select a trigger type"} complete={Boolean(triggerType)}>
           <TriggerDropdown
             value={triggerType}
             onChange={(value) => {
               setTriggerType(value);
               if (value === "dm") setOpeningEnabled(false);
             }}
+            onClear={() => setTriggerType(null)}
           />
         </BuilderSection>
 
-        {triggerType === "comment" && <BuilderSection step="3" title="Select post">
+        {triggerType === "comment" && <BuilderSection step="2" title="Choose a post or reel" complete={Boolean(selectedPost)}>
           <SetupActionCard
             icon={<Image className="h-7 w-7" />}
             title={selectedPost ? "Post or Reel selected" : "Select Post or Reel"}
@@ -377,7 +359,7 @@ export default function AutomationBuilder({
           />
         </BuilderSection>}
 
-        <BuilderSection step={triggerType === "dm" ? "3" : "4"} title="Select keyword">
+        {triggerType && <BuilderSection step={triggerType === "dm" ? "2" : "3"} title="Choose a keyword" complete={Boolean(triggerValue)}>
           <SetupActionCard
             icon={<Languages className="h-7 w-7" />}
             title={anyKeyword ? "Any keyword" : keywords.length ? keywords.join(", ") : "Setup Keywords"}
@@ -390,9 +372,9 @@ export default function AutomationBuilder({
             complete={Boolean(triggerValue)}
             onClick={() => setModal("keywords")}
           />
-        </BuilderSection>
+        </BuilderSection>}
 
-        {triggerType === "comment" && <BuilderSection step="5" title="Reply to the comment">
+        {triggerType === "comment" && <BuilderSection step="4" title="Public reply" complete={Boolean(publicReply.trim())}>
           <SetupActionCard
             icon={<MessageCircle className="h-7 w-7" />}
             title={
@@ -407,7 +389,7 @@ export default function AutomationBuilder({
           />
         </BuilderSection>}
 
-        <FlowPreview
+        {triggerType && <FlowPreview
           openingEnabled={openingEnabled}
           toggleOpeningEnabled={toggleOpeningEnabled}
           openingMessage={openingMessage}
@@ -431,7 +413,7 @@ export default function AutomationBuilder({
           stillNotFollowingMessage={stillNotFollowingMessage}
           setStillNotFollowingMessage={setStillNotFollowingMessage}
           triggerType={triggerType}
-        />
+        />}
 
       </div>
 
@@ -466,53 +448,85 @@ export default function AutomationBuilder({
   );
 }
 
-function BuilderSection({ step, title, children }) {
+function BuilderSection({ step, title, complete = false, children }) {
   return (
-    <section className="relative border-l-2 border-slate-100 pl-6 sm:pl-8">
-      <div className="absolute -left-4 top-0 flex h-8 w-8 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white ring-4 ring-white">
-        {step}
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 sm:p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${complete ? "bg-emerald-500" : "bg-slate-950"}`}>
+          {complete ? <Check className="h-4 w-4" /> : step}
+        </div>
+        <h3 className="text-base font-bold text-slate-900 sm:text-lg">{title}</h3>
       </div>
-      <h3 className="mb-4 text-lg font-bold text-slate-800 sm:text-xl">{title}</h3>
       {children}
     </section>
   );
 }
 
-function TriggerDropdown({ value, onChange }) {
-  const selected =
-    TRIGGER_OPTIONS.find((option) => option.value === value) ||
-    TRIGGER_OPTIONS[0];
+function TriggerDropdown({ value, onChange, onClear }) {
+  const selectedOption = TRIGGER_OPTIONS.find((option) => option.value === value);
+
+  if (selectedOption) {
+    const SelectedIcon = selectedOption.icon === "message" ? MessageCircle : Instagram;
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-brand-200 bg-brand-50/50 p-3 sm:p-4">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white">
+          <SelectedIcon className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-slate-950 sm:text-base">{selectedOption.title}</span>
+          <span className="mt-0.5 block text-xs leading-5 text-slate-500 sm:text-sm">{selectedOption.description}</span>
+        </span>
+        <button
+          type="button"
+          onClick={onClear}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-brand-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          aria-label="Change trigger type"
+          title="Change trigger type"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <label className="block">
-        <span className="mb-2 block text-sm font-bold text-slate-700">
-          Trigger type
-        </span>
-        <div className="relative">
-          <select
-            className="input appearance-none pr-12 text-lg font-bold"
-            value={selected.value}
-            onChange={(event) => onChange(event.target.value)}
+    <div className="grid gap-3 sm:grid-cols-2">
+      {TRIGGER_OPTIONS.map((option) => {
+        const selected = option.value === value;
+        const TriggerIcon = option.icon === "message" ? MessageCircle : Instagram;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            disabled={!option.available}
+            onClick={() => option.available && onChange(option.value)}
+            aria-pressed={selected}
+            className={`group relative flex min-h-[90px] items-start gap-3 rounded-lg border p-4 text-left transition ${
+              !option.available
+                ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60"
+                : selected
+                  ? "border-brand-500 bg-brand-50/60 shadow-[0_0_0_2px_rgba(63,81,181,0.08)]"
+                  : "border-slate-200 bg-white hover:border-brand-300 hover:bg-brand-50/30"
+            }`}
           >
-            {TRIGGER_OPTIONS.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-                disabled={!option.available}
-              >
-                {option.title}
-                {option.available ? "" : " - Coming soon"}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-        </div>
-      </label>
-      <div className="mt-4 flex items-center gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
-        <Zap className="h-4 w-4 text-brand-600" />
-        {selected.description}
-      </div>
+            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-brand-600 text-white" : "bg-slate-50 text-brand-600"}`}>
+              <TriggerIcon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block pr-6 text-sm font-bold leading-5 text-slate-950">{option.title}</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">{option.description}</span>
+            </span>
+            {selected && option.available && (
+              <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-white">
+                <Check className="h-3.5 w-3.5" />
+              </span>
+            )}
+            {!option.available && (
+              <span className="absolute right-3 top-3 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-500 ring-1 ring-slate-200">Soon</span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -530,9 +544,9 @@ function SetupActionCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:shadow-md sm:p-5"
+      className="group flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 text-left transition hover:border-brand-300 hover:bg-brand-50/30 sm:p-4"
     >
-      <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-slate-400">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-slate-500 sm:h-14 sm:w-14">
         {imageUrl ? (
           <img src={imageUrl} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -541,7 +555,7 @@ function SetupActionCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-2">
-          <span className="min-w-0 truncate text-lg font-bold text-slate-950">
+          <span className="min-w-0 truncate text-sm font-bold text-slate-950 sm:text-base">
             {title}
           </span>
           {complete && (
@@ -550,11 +564,11 @@ function SetupActionCard({
             </span>
           )}
         </span>
-        <span className="mt-1 line-clamp-2 text-sm font-medium text-slate-500">
+        <span className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-500 sm:text-sm">
           {description}
         </span>
       </span>
-      <span className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-brand-700 transition group-hover:border-brand-200 group-hover:bg-brand-50">
+      <span className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-brand-700 transition group-hover:border-brand-200 group-hover:bg-white sm:text-sm">
         {actionLabel}
       </span>
     </button>
@@ -563,16 +577,33 @@ function SetupActionCard({
 
 function PostModal({ posts, selectedPost, setSelectedPost, onClose }) {
   return (
-    <Modal title="Select Post or Reel" onClose={onClose}>
+    <Modal
+      title="Select Post or Reel"
+      onClose={onClose}
+      action={
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={!selectedPost}
+          className="btn-primary min-h-10 justify-center px-4 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Check className="h-4 w-4" />
+          Confirm
+        </button>
+      }
+    >
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-brand-100 bg-brand-50/50 px-4 py-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Choose one post or reel</p>
+          <p className="mt-0.5 text-xs text-slate-500">The automation will listen for matching comments on this media.</p>
+        </div>
+        {selectedPost && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+            <Check className="h-3.5 w-3.5" /> Selected
+          </span>
+        )}
+      </div>
       <PostSelector posts={posts} selectedPost={selectedPost} onSelect={setSelectedPost} />
-      <button
-        type="button"
-        onClick={onClose}
-        disabled={!selectedPost}
-        className="btn-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Confirm
-      </button>
     </Modal>
   );
 }
@@ -597,81 +628,110 @@ function KeywordsModal({
   };
 
   return (
-    <Modal title="Setup Keywords" onClose={onClose}>
-      <p className="mb-6 text-lg font-medium leading-relaxed text-slate-500">
-        Keywords are not case-sensitive, e.g. "Link" and "link" are recognized as the same.
-      </p>
-      {subject === "DM" && (
-        <label className="mb-5 block">
-          <span className="mb-2 block text-sm font-bold text-slate-700">Match type</span>
-          <select
-            className="input text-lg font-semibold"
-            value={matchType}
-            onChange={(event) => setMatchType(event.target.value)}
-          >
-            <option value="exact">Exact match</option>
-            <option value="contains">Contains</option>
-          </select>
-        </label>
-      )}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <input
-          className="input text-lg"
-          placeholder="Type keyword, e.g. link"
-          value={draft}
-          disabled={anyKeyword}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              addKeyword();
-            }
-          }}
-        />
+    <Modal
+      title="Setup Keywords"
+      onClose={onClose}
+      action={
         <button
           type="button"
-          onClick={addKeyword}
-          disabled={anyKeyword || !draft.trim()}
-          className="btn-secondary justify-center sm:w-32"
+          onClick={onClose}
+          disabled={!anyKeyword && keywords.length === 0}
+          className="btn-primary min-h-10 justify-center px-4 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Add
+          <Check className="h-4 w-4" />
+          Confirm
         </button>
+      }
+    >
+      <div className="mb-5 rounded-lg border border-brand-100 bg-brand-50/50 px-4 py-3">
+        <p className="text-sm font-bold text-slate-900">Choose what starts this automation</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          Keywords are not case-sensitive. For example, Link and link are treated the same.
+        </p>
       </div>
-      <div className="mt-5 flex items-center justify-between gap-4">
+
+      {subject === "DM" && (
+        <div className="mb-5">
+          <p className="mb-2 text-sm font-bold text-slate-700">How should it match?</p>
+          <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+            {[{ value: "exact", label: "Exact match" }, { value: "contains", label: "Contains word" }].map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setMatchType(option.value)}
+                className={`rounded-md px-3 py-2.5 text-sm font-bold transition ${
+                  matchType === option.value
+                    ? "bg-white text-brand-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <label className="mb-2 block text-sm font-bold text-slate-700">Add keywords</label>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            className="input text-base"
+            placeholder="Type a keyword, e.g. link"
+            value={draft}
+            disabled={anyKeyword}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                addKeyword();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={addKeyword}
+            disabled={anyKeyword || !draft.trim()}
+            className="btn-secondary justify-center disabled:cursor-not-allowed disabled:opacity-50 sm:w-28"
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
+        </div>
+
+        <div className="mt-4 min-h-12 rounded-lg border border-dashed border-slate-200 bg-slate-50/60 p-3">
+          <div className="flex flex-wrap gap-2">
+            {keywords.map((keyword) => (
+              <button
+                key={keyword}
+                type="button"
+                onClick={() => setKeywords(keywords.filter((item) => item !== keyword))}
+                disabled={anyKeyword}
+                className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-3 py-1.5 text-sm font-bold text-white transition hover:bg-brand-700 disabled:opacity-40"
+              >
+                {keyword}
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ))}
+            {!anyKeyword && keywords.length === 0 && (
+              <span className="text-sm font-medium text-slate-400">No keywords added yet</span>
+            )}
+            {anyKeyword && (
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-700">
+                <Check className="h-3.5 w-3.5" /> Every {subject} will trigger
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
         <div>
-          <span className="text-lg font-semibold text-slate-950">Any keyword</span>
-          <p className="text-sm font-medium text-slate-500">
-            Use this when every {subject} should trigger the flow.
-          </p>
+          <span className="text-sm font-bold text-slate-950">Trigger for any {subject}</span>
+          <p className="mt-0.5 text-xs leading-5 text-slate-500">Ignore keywords and run for every incoming {subject}.</p>
         </div>
         <Toggle enabled={anyKeyword} onChange={() => setAnyKeyword(!anyKeyword)} />
       </div>
-      <div className="mt-5 flex flex-wrap gap-3">
-        {keywords.map((keyword) => (
-          <button
-            key={keyword}
-            type="button"
-            onClick={() => setKeywords(keywords.filter((item) => item !== keyword))}
-            className="inline-flex items-center gap-2 rounded-full bg-brand-500 px-4 py-2 text-base font-semibold text-white"
-          >
-            {keyword}
-            <X className="h-4 w-4" />
-          </button>
-        ))}
-        {!anyKeyword && keywords.length === 0 && (
-          <span className="rounded-lg border border-dashed border-slate-200 px-4 py-2 text-sm font-semibold text-slate-400">
-            Add at least one keyword
-          </span>
-        )}
-        {anyKeyword && (
-          <span className="rounded-lg bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">
-            Every {subject} will trigger
-          </span>
-        )}
-      </div>
-      <button type="button" onClick={onClose} className="btn-primary mt-7 w-full justify-center py-4 text-lg">
-        Confirm
-      </button>
     </Modal>
   );
 }
@@ -690,40 +750,58 @@ function RepliesModal({ replies, setReplies, onClose }) {
   };
 
   return (
-    <Modal title="Setup Comment Replies" onClose={onClose}>
-      <p className="mb-6 text-lg font-medium text-slate-500">
-        Add Random Comment Replies
-      </p>
-      <div className="space-y-4">
+    <Modal
+      title="Setup Comment Replies"
+      onClose={onClose}
+      action={
+        <button type="button" onClick={onClose} className="btn-primary min-h-10 justify-center px-4">
+          <Check className="h-4 w-4" />
+          Confirm
+        </button>
+      }
+    >
+      <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <p className="text-sm font-bold text-slate-900">Random public replies</p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          JustDMs rotates these replies to keep comment responses natural. Add at least one.
+        </p>
+      </div>
+      <div className="space-y-3">
         {currentReplies.map((reply, index) => (
-          <div key={index} className="flex items-center gap-4 border-b border-slate-100 pb-4">
-            <span className="h-3 w-3 rounded-full bg-slate-300" />
-            <input
-              className="input text-lg"
-              value={reply}
-              onChange={(event) => updateReply(index, event.target.value)}
-            />
+          <div key={index} className="group rounded-lg border border-slate-200 bg-white p-3 transition focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-100 sm:p-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase text-slate-500">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[11px] text-white">{index + 1}</span>
+                Reply {index + 1}
+              </span>
             <button
               type="button"
               onClick={() => removeReply(index)}
-              className="rounded-lg p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                disabled={currentReplies.length === 1}
+                className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
               title="Delete reply"
             >
-              <Trash2 className="h-6 w-6" />
+                <Trash2 className="h-4 w-4" />
             </button>
+            </div>
+            <textarea
+              className="min-h-[72px] w-full resize-none border-0 bg-transparent text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
+              value={reply}
+              onChange={(event) => updateReply(index, event.target.value)}
+              placeholder="Example: Sent! Check your DM."
+              maxLength={300}
+            />
+            <p className="mt-1 text-right text-[11px] font-medium text-slate-400">{reply.length}/300</p>
           </div>
         ))}
       </div>
       <button
         type="button"
         onClick={() => setReplies([...currentReplies, "Check your DM"])}
-        className="mt-5 flex w-full items-center justify-center gap-3 rounded-lg border border-dashed border-slate-300 px-5 py-4 text-lg font-semibold text-slate-950 hover:bg-slate-50"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-brand-300 bg-brand-50/30 px-5 py-3 text-sm font-bold text-brand-700 transition hover:border-brand-500 hover:bg-brand-50"
       >
-        <Plus className="h-6 w-6" />
-        Add New Reply
-      </button>
-      <button type="button" onClick={onClose} className="btn-primary mt-6 w-full justify-center py-4 text-lg">
-        Confirm
+        <Plus className="h-4 w-4" />
+        Add another reply
       </button>
     </Modal>
   );
@@ -852,6 +930,32 @@ function FlowPreview({
           )}
         </div>
       </div>}
+
+      {triggerType === "comment" && (
+        <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+            <Crown className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-bold text-slate-950">Ask for follow</h3>
+              {followRequired && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">ON</span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs leading-5 text-slate-500 sm:text-sm">
+              {openingEnabled
+                ? "Verify that the user follows your account before sending the resource."
+                : "Turn on the opening message to use follow verification."}
+            </p>
+          </div>
+          <Toggle
+            enabled={followRequired}
+            disabled={!openingEnabled}
+            onChange={() => setFollowRequired(!followRequired)}
+          />
+        </div>
+      )}
 
       {openingEnabled && followRequired && (
         <FollowGateCard
@@ -993,13 +1097,6 @@ function FlowPreview({
 
       {addResponseOpen && (
         <AddResponseModal
-          openingEnabled={openingEnabled}
-          followRequired={followRequired}
-          onAddFollowGate={() => {
-            setFollowRequired(true);
-            setAddResponseOpen(false);
-            setFollowEditorOpen(true);
-          }}
           onAddText={addTextResponse}
           onAddLink={addLinkResponse}
           onClose={() => setAddResponseOpen(false)}
@@ -1095,58 +1192,31 @@ function FollowGateCard({
 }
 
 function AddResponseModal({
-  openingEnabled,
-  followRequired,
-  onAddFollowGate,
   onAddText,
   onAddLink,
   onClose,
 }) {
-  const followDisabled = followRequired || !openingEnabled;
-
   return (
     <Modal title="Add Response" onClose={onClose}>
-      <div className="space-y-4">
-        {!openingEnabled && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-base font-semibold text-amber-900">
-            Opening message is turned off, so follow gate is unavailable. Turn opening message on to use Get Details and follow check.
-          </div>
-        )}
-        <ResponseOption
-          title="Ask For Follow"
-          description={
-            !openingEnabled
-              ? "Requires Opening Message"
-              : followRequired
-              ? "Follow gate is already in this flow"
-              : "Request users to follow your account"
-          }
-          icon={<Crown className="h-6 w-6" />}
-          highlighted
-          disabled={followDisabled}
-          onClick={onAddFollowGate}
-        />
-        <ResponseOption
-          title="Card Message"
-          description="Coming soon"
-          disabled
-        />
+      <div>
+        <p className="mb-5 text-sm leading-6 text-slate-500">
+          Choose how the final response should be delivered. You can change it later.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
         <ResponseOption
           title="Text Message"
-          description="Send a simple text-only response"
+          description="Send a clean text-only reply"
+          icon={<MessageCircle className="h-5 w-5" />}
           onClick={onAddText}
         />
         <ResponseOption
           title="Send Link"
           description="Send text with up to three URL buttons"
-          icon={<Link2 className="h-6 w-6" />}
+          icon={<Link2 className="h-5 w-5" />}
+          highlighted
           onClick={onAddLink}
         />
-        <ResponseOption
-          title="Image Message"
-          description="Coming soon"
-          disabled
-        />
+        </div>
       </div>
     </Modal>
   );
@@ -1165,24 +1235,28 @@ function ResponseOption({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`flex w-full items-center gap-4 rounded-lg border border-slate-200 p-5 text-left transition ${
-        disabled ? "cursor-not-allowed opacity-60" : "hover:border-brand-300 hover:bg-brand-50/40"
+      className={`group relative flex min-h-[132px] w-full flex-col items-start gap-3 rounded-lg border p-4 text-left transition ${
+        highlighted
+          ? "border-brand-200 bg-brand-50/40 hover:border-brand-400 hover:bg-brand-50"
+          : "border-slate-200 bg-white hover:border-brand-300 hover:bg-slate-50"
+      } ${
+        disabled ? "cursor-not-allowed opacity-60" : "hover:-translate-y-0.5 hover:shadow-md"
       }`}
     >
       <span
-        className={`flex h-12 w-12 items-center justify-center rounded-lg ${
-          highlighted ? "bg-amber-300 text-amber-900" : "bg-slate-50 text-slate-500"
+        className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+          highlighted ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-600"
         }`}
       >
-        {icon || <MessageCircle className="h-6 w-6" />}
+        {icon || <MessageCircle className="h-5 w-5" />}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-xl font-bold text-slate-950">{title}</span>
-        <span className="mt-1 block text-base font-medium text-slate-500">
+        <span className="block text-base font-bold text-slate-950">{title}</span>
+        <span className="mt-1 block text-sm leading-5 text-slate-500">
           {description}
         </span>
       </span>
-      <ChevronUp className="h-5 w-5 rotate-90 text-slate-400" />
+      <ChevronUp className="absolute right-4 top-4 h-4 w-4 rotate-90 text-slate-400 transition group-hover:text-brand-600" />
     </button>
   );
 }
@@ -1296,32 +1370,41 @@ function MessageCard({ message, buttonLabel, onMessageChange, onButtonChange }) 
   );
 }
 
-function Modal({ title, onClose, children }) {
+function Modal({ title, onClose, children, action = null }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-8">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-lg bg-white p-8 shadow-xl">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-2xl font-bold text-slate-950">{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-slate-950 hover:bg-slate-50"
-          >
-            <X className="h-7 w-7" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8">
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-auto rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:rounded-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+          <div>
+            <h2 className="text-xl font-bold text-slate-950 sm:text-2xl">{title}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Configure this step for your automation</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {action}
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+              aria-label="Close dialog"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-        {children}
+        <div className="px-5 py-5 sm:px-6 sm:py-6">{children}</div>
       </div>
     </div>
   );
 }
 
-function Toggle({ enabled, onChange }) {
+function Toggle({ enabled, onChange, disabled = false }) {
   return (
     <button
       type="button"
       onClick={onChange}
-      className={`relative h-10 w-20 rounded-full transition ${
+      disabled={disabled}
+      aria-pressed={enabled}
+      className={`relative h-10 w-20 rounded-full transition disabled:cursor-not-allowed disabled:opacity-45 ${
         enabled ? "bg-slate-950" : "bg-slate-200"
       }`}
     >

@@ -3,7 +3,8 @@ const express = require("express");
 const axios = require("axios");
 const supabase = require("../lib/supabase");
 const { getAuthenticatedUser } = require("../lib/authClient");
-const { isActiveProSubscription } = require("../lib/automationAccess");
+const { isActivePaidSubscription } = require("../lib/automationAccess");
+const { qualifyReferralForSubscription } = require("../lib/referral");
 
 const router = express.Router();
 const RAZORPAY_API = "https://api.razorpay.com/v1";
@@ -130,7 +131,17 @@ async function updateFromWebhook(event) {
     updated_at: new Date().toISOString(),
   };
 
-  await supabase.from("subscriptions").update(updates).eq("id", existing.id);
+  const { error } = await supabase.from("subscriptions").update(updates).eq("id", existing.id);
+  if (error) throw error;
+
+  const paymentId = event.payload?.payment?.entity?.id;
+  if (event.event === "subscription.charged" && paymentId) {
+    await qualifyReferralForSubscription({
+      userId: existing.user_id,
+      userEmail: existing.user_email,
+      paymentId,
+    });
+  }
 }
 
 router.post("/webhook", async (req, res) => {
@@ -187,7 +198,7 @@ router.post("/subscription", requireUser, async (req, res) => {
 
     const existing = await findSubscriptionByEmail(req.billingUser.email);
     if (
-      isActiveProSubscription(existing) ||
+      isActivePaidSubscription(existing) ||
       ["authenticated", "pending", "halted"].includes(existing?.status)
     ) {
       return res.status(409).json({
@@ -298,6 +309,17 @@ router.post("/verify", requireUser, async (req, res) => {
       .select("*")
       .single();
     if (error) throw error;
+
+    try {
+      await qualifyReferralForSubscription({
+        userId: subscription.user_id,
+        userEmail: subscription.user_email,
+        paymentId,
+      });
+    } catch (referralError) {
+      // Payment remains successful. The signed webhook will retry reward processing.
+      console.error("Referral reward after checkout verification failed:", referralError);
+    }
 
     return res.json({ subscription: data });
   } catch (error) {

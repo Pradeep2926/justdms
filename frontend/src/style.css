@@ -95,3 +95,10 @@
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
 }
+
+@media (min-width: 768px) {
+  .referral-hero-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 0.72fr);
+    align-items: center;
+  }
+}

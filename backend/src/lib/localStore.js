@@ -26,6 +26,10 @@ const INITIAL_DATA = {
   booking_payment_settings: [],
   bookings: [],
   booking_payment_submissions: [],
+  referral_codes: [],
+  referrals: [],
+  referral_rewards: [],
+  referral_events: [],
 };
 
 function ensureDb() {

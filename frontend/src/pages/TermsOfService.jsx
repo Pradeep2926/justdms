@@ -12,6 +12,9 @@ export default function TermsOfService() {
       <LegalSection title="Subscriptions and Payments">
         <p>Paid plans renew according to the selected monthly or yearly billing cycle until cancelled. Payments are processed by Razorpay. Pricing, cancellation, and eligible refund conditions are described in our Refund & Cancellation Policy.</p>
       </LegalSection>
+      <LegalSection title="Refer & Earn">
+        <p>A referrer receives 14 days of Pro access after an eligible new customer joins through their link and completes a first successful paid subscription. Each new customer can qualify once. Renewals, self-referrals, duplicate or fraudulent accounts, refunded payments, and disputed payments are not eligible. We may withhold or reverse rewards where abuse or an invalid payment is identified.</p>
+      </LegalSection>
       <LegalSection title="Platform Rules">
         <p>You must follow applicable law, Meta policies, and our Acceptable Use Policy. We may limit or suspend service where activity threatens users, the platform, or our compliance obligations.</p>
       </LegalSection>

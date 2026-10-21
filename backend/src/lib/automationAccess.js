@@ -13,6 +13,16 @@ function ownsAutomationEmail(user, requestedEmail) {
 const FREE_ACTIVE_AUTOMATION_LIMIT = 2;
 
 function isActiveProSubscription(subscription, now = Date.now()) {
+  const referralEnd = new Date(subscription?.referral_access_end || 0).getTime();
+  if (Number.isFinite(referralEnd) && referralEnd > now) return true;
+  if (subscription?.status !== "active") return false;
+  const expiresAt = subscription.ends_at || subscription.current_end;
+  if (!expiresAt) return true;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  return Number.isFinite(expiresAtMs) && expiresAtMs > now;
+}
+
+function isActivePaidSubscription(subscription, now = Date.now()) {
   if (subscription?.status !== "active") return false;
   const expiresAt = subscription.ends_at || subscription.current_end;
   if (!expiresAt) return true;
@@ -39,6 +49,7 @@ module.exports = {
   normalizeEmail,
   ownsAutomationEmail,
   isActiveProSubscription,
+  isActivePaidSubscription,
   automationEntitlements,
   canActivateAutomation,
 };

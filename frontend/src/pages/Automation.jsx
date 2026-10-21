@@ -5,7 +5,7 @@ import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
 import { AutomationLoader } from "../components/common/PageLoader";
 import api from "../api/api";
-import { ArrowRight, CalendarDays, Crown, Filter, Instagram, Plus, Search, Sparkles, Workflow, X } from "lucide-react";
+import { ArrowRight, CalendarDays, Crown, Filter, Instagram, Plus, Search, Sparkles, Workflow } from "lucide-react";
 import { useInstagram } from "../hooks/useInstagram";
 import { useSubscription } from "../hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
@@ -152,11 +152,17 @@ export default function Automation() {
 
   return (
     <AppLayout
-      title="Automations"
-      subtitle={ig ? `Manage comment-to-DM flows for @${ig.username}` : "Comment → DM workflows powered by Meta APIs"}
+      title={showBuilder ? (editingAutomation ? "Edit automation" : "Create automation") : "Automations"}
+      subtitle={
+        showBuilder
+          ? "Build your Instagram trigger and response flow"
+          : ig
+            ? `Manage comment-to-DM flows for @${ig.username}`
+            : "Comment → DM workflows powered by Meta APIs"
+      }
     >
       <div className="space-y-6">
-        {!isPro && (
+        {!showBuilder && !isPro && (
           <section className={`flex flex-col gap-4 rounded-lg border px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${freeLimitReached ? "border-amber-200 bg-amber-50" : "border-brand-200 bg-brand-50/60"}`}>
             <div className="flex items-start gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700 shadow-sm">
@@ -176,7 +182,7 @@ export default function Automation() {
           </section>
         )}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {!showBuilder && <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-white text-slate-900 shadow-sm ring-1 ring-slate-200">
               <Workflow className="h-5 w-5" />
@@ -198,19 +204,10 @@ export default function Automation() {
             }}
             className="btn-primary"
           >
-            {showBuilder ? (
-              <>
-                <X className="h-4 w-4" />
-                Close
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                Create Automation
-              </>
-            )}
+            <Plus className="h-4 w-4" />
+            Create Automation
           </button>
-        </div>
+        </div>}
 
         {showBuilder && (
           <div>
@@ -264,14 +261,16 @@ export default function Automation() {
           </div>
         )}
 
-        <AutomationList
-          automations={filteredAutomations}
-          posts={posts}
-          account={ig}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onToggleStatus={handleToggleStatus}
-        />
+        {!showBuilder && (
+          <AutomationList
+            automations={filteredAutomations}
+            posts={posts}
+            account={ig}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onToggleStatus={handleToggleStatus}
+          />
+        )}
       </div>
     </AppLayout>
   );

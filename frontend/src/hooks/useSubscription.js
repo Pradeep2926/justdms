@@ -45,8 +45,10 @@ export function useSubscription(user) {
   }, [refresh]);
 
   const expiresAt = subscription?.ends_at || subscription?.current_end;
-  const isPro = subscription?.status === "active" &&
+  const paidPro = subscription?.status === "active" &&
     (!expiresAt || new Date(expiresAt).getTime() > Date.now());
+  const referralPro = new Date(subscription?.referral_access_end || 0).getTime() > Date.now();
+  const isPro = paidPro || referralPro;
 
   return {
     subscription,

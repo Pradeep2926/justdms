@@ -23,6 +23,8 @@ import PublicBio from "./pages/PublicBio";
 import AppointmentBooking from "./pages/AppointmentBooking";
 import PublicBooking from "./pages/PublicBooking";
 import ResourceRedirect from "./pages/ResourceRedirect";
+import ReferEarn from "./pages/ReferEarn";
+import ReferralRedirect from "./pages/ReferralRedirect";
 
 export default function App() {
   return (
@@ -31,6 +33,7 @@ export default function App() {
         {/* Public */}
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/ref/:code" element={<ReferralRedirect />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -53,6 +56,7 @@ export default function App() {
         <Route path="/automation" element={<Automation />} /> {/* ✅ */}
         <Route path="/settings" element={<Settings />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/refer" element={<ReferEarn />} />
         <Route path="/link-in-bio" element={<LinkInBio />} />
         <Route path="/appointment-booking" element={<AppointmentBooking />} />
         <Route path="/book/:username" element={<PublicBooking />} />

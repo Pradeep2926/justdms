@@ -155,11 +155,14 @@ export default function Billing() {
   };
 
   const accessEnd = subscription?.ends_at || subscription?.current_end;
-  const active = subscription?.status === "active" &&
+  const paidActive = subscription?.status === "active" &&
     (!accessEnd || new Date(accessEnd).getTime() > Date.now());
-  const renewalDate = subscription?.ends_at
+  const referralActive = new Date(subscription?.referral_access_end || 0).getTime() > Date.now();
+  const active = paidActive || referralActive;
+  const effectiveAccessEnd = paidActive ? accessEnd : subscription?.referral_access_end;
+  const renewalDate = effectiveAccessEnd
     ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(
-        new Date(subscription.ends_at)
+        new Date(effectiveAccessEnd)
       )
     : null;
 
@@ -175,7 +178,7 @@ export default function Billing() {
               <div>
                 <p className="font-bold text-emerald-950">JustDMs Pro is active</p>
                 <p className="text-sm text-emerald-800">
-                  {subscription.billing_cycle === "yearly" ? "Yearly" : "Monthly"} billing
+                  {referralActive && !paidActive ? "Referral reward" : subscription.billing_cycle === "yearly" ? "Yearly billing" : "Monthly billing"}
                   {renewalDate ? ` · Access through ${renewalDate}` : ""}
                 </p>
               </div>
