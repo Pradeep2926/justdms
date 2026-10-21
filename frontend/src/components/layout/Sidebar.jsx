@@ -15,11 +15,13 @@ import {
   Link2,
   CalendarCheck,
   Gift,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
 import logoUrl from "../../assets/justdms-logo.png";
 import { useSubscription } from "../../hooks/useSubscription";
+import { useAdminAccess } from "../../hooks/useAdminAccess";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: Activity, label: "Dashboard" },
@@ -35,11 +37,12 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
   const { user, logout } = useAuth();
   const { ig } = useInstagram(user?.email);
   const { isPro } = useSubscription(user);
+  const isAdmin = useAdminAccess(user);
 
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white text-ink-900 shadow-[12px_0_40px_-30px_rgba(15,23,42,0.28)] transition-transform duration-200 md:translate-x-0 ${
-        mobileOpen ? "translate-x-0" : "-translate-x-full"
+        mobileOpen ? "visible translate-x-0" : "invisible -translate-x-full md:visible"
       }`}
     >
       <div className="relative border-b border-slate-100 p-5 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400 before:via-brand-600 before:to-violet-600">
@@ -63,7 +66,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-5">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-5">
         {NAV_ITEMS.map(({ to, icon: Icon, label, disabled }) =>
           disabled ? (
             <div
@@ -95,6 +98,7 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
             </NavLink>
           )
         )}
+        {isAdmin && <NavLink to="/admin" onClick={onNavigate} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-base font-semibold transition ${isActive ? "bg-violet-50 text-violet-700 ring-1 ring-violet-100" : "text-slate-600 hover:bg-slate-50 hover:text-brand-700"}`}><ShieldCheck className="h-5 w-5" />Admin overview</NavLink>}
         <p className="px-3 pb-1 pt-5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Creator tools</p>
         {[
           { to: "/link-in-bio", icon: Link2, label: "Link in Bio" },

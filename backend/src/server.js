@@ -65,6 +65,7 @@ app.use("/bio", bioRoutes);
 app.use("/booking", bookingRoutes);
 app.use("/resource", resourceRoutes);
 app.use("/referrals", referralRoutes);
+app.use("/admin", require("./routes/admin.routes"));
 
 /**
  * =============================

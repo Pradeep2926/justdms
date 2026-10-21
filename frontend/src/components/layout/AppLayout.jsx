@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
 
-export default function AppLayout({ children, title, subtitle, action }) {
+export default function AppLayout({ children, title, subtitle, action, compactHeader = false }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -22,7 +22,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
 
       <div className="flex min-h-screen flex-col min-w-0 md:ml-64">
         <header className="sticky top-0 z-10 border-b border-brand-100/70 bg-white/85 px-4 py-4 backdrop-blur-xl sm:px-6 md:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className={compactHeader ? "flex items-center justify-between gap-3" : "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"}>
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
@@ -37,7 +37,7 @@ export default function AppLayout({ children, title, subtitle, action }) {
                   {title}
                 </h1>
                 {subtitle && (
-                  <p className="mt-1 truncate text-sm text-slate-500">
+                  <p className={`mt-1 truncate text-sm text-slate-500 ${compactHeader ? "hidden sm:block" : ""}`}>
                     {subtitle}
                   </p>
                 )}
