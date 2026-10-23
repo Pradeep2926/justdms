@@ -1351,13 +1351,17 @@ async function processPostback({ body, messaging }) {
     (await getAutomationAccount(automation));
   if (!account) return;
 
-  account = await bindMessagingOwnerId(account, recipientId);
-
   const boundMessagingOwnerId = interaction.raw_context?.messaging_owner_id;
+  // A click between two connected accounts can arrive from both account
+  // contexts. Resolve its recipient before learning IDs or changing the flow.
+  const recipientAccount = await getAccountForMessagingOwner(recipientId);
   if (
-    boundMessagingOwnerId &&
-    recipientId &&
-    String(boundMessagingOwnerId) !== String(recipientId)
+    !senderId ||
+    !recipientId ||
+    (recipientAccount && recipientAccount.id !== account.id) ||
+    (!recipientAccount &&
+      boundMessagingOwnerId &&
+      String(boundMessagingOwnerId) !== String(recipientId))
   ) {
     const errorMessage =
       "Button click belongs to a different Instagram account than the interaction";
@@ -1377,27 +1381,21 @@ async function processPostback({ body, messaging }) {
       mediaId: interaction.media_id,
       eventType: "postback_account_mismatch",
       direction: "inbound",
-      status: "failed",
+      status: "skipped",
       payload: messaging,
       errorMessage,
     });
-    await upsertInteraction(interaction, {
-      current_step: "postback_account_mismatch",
-      raw_context: {
-        ...(interaction.raw_context || {}),
-        postback_error: errorMessage,
-        postback_recipient_id: recipientId || null,
-      },
-    });
     return;
   }
+
+  account = await bindMessagingOwnerId(account, recipientId);
 
   const messagingAccount = recipientId
     ? { ...account, messaging_owner_id: recipientId }
     : account;
   const messagingInteraction = withMessagingSender(interaction, senderId);
 
-  if (recipientId && !boundMessagingOwnerId) {
+  if (recipientId && String(boundMessagingOwnerId || "") !== String(recipientId)) {
     interaction.raw_context = {
       ...(interaction.raw_context || {}),
       messaging_owner_id: recipientId,
