@@ -73,7 +73,7 @@ async function subscribeInstagramWebhooks(account) {
       null,
       {
         params: {
-          subscribed_fields: "comments,messages",
+          subscribed_fields: "comments,messages,messaging_postbacks",
           access_token: accessToken,
         },
         timeout: 20000,

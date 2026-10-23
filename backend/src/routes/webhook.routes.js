@@ -10,6 +10,8 @@ const {
   metaErrorDetails,
 } = require("../lib/deliveryError");
 const { publicResourceUrl } = require("../lib/resourceLink");
+const { createWebhookDiagnostics, messagingRoute } = require("../lib/webhookDiagnostics");
+const messagingDiagnostics = createWebhookDiagnostics({ db: supabase });
 
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
@@ -1312,7 +1314,7 @@ async function processPostback({ body, messaging }) {
   const parsedPayload = parseAutomationPostback(payload);
   if (!parsedPayload) {
     console.log("Ignoring unsupported Instagram postback payload");
-    return;
+    return { status: "skipped", reason: "unsupported_postback_payload" };
   }
   const { action, automationId, interactionId } = parsedPayload;
 
@@ -1334,7 +1336,7 @@ async function processPostback({ body, messaging }) {
     .maybeSingle();
 
   if (automationError) throw automationError;
-  if (!automation) return;
+  if (!automation) return { status: "skipped", reason: "postback_automation_not_found" };
 
   const { data: interaction, error: interactionError } = await supabase
     .from("automation_interactions")
@@ -1343,13 +1345,13 @@ async function processPostback({ body, messaging }) {
     .maybeSingle();
 
   if (interactionError) throw interactionError;
-  if (!interaction) return;
+  if (!interaction) return { status: "skipped", reason: "postback_interaction_not_found" };
 
   let account =
     (await getAccountById(interaction.connected_account_id)) ||
     (await getAccountForMedia(interaction.media_id)) ||
     (await getAutomationAccount(automation));
-  if (!account) return;
+  if (!account) return { status: "skipped", reason: "postback_account_not_found" };
 
   const boundMessagingOwnerId = interaction.raw_context?.messaging_owner_id;
   // A click between two connected accounts can arrive from both account
@@ -1385,7 +1387,7 @@ async function processPostback({ body, messaging }) {
       payload: messaging,
       errorMessage,
     });
-    return;
+    return { status: "skipped", reason: "postback_account_mismatch" };
   }
 
   account = await bindMessagingOwnerId(account, recipientId);
@@ -1589,12 +1591,14 @@ async function processInboundMessage({ messaging }) {
   const recipientId = messaging?.recipient?.id;
   const text = messaging?.message?.text;
 
-  if (!senderId || !recipientId || !text || messaging?.message?.is_echo) return;
+  if (!senderId || !recipientId || !text || messaging?.message?.is_echo) {
+    return { status: "skipped", reason: "invalid_or_echo_message" };
+  }
 
   const account = await getAccountForMessagingOwner(recipientId);
   if (!account?.user_email) {
     console.warn("⚠️ No connected account found for inbound DM:", recipientId);
-    return;
+    return { status: "skipped", reason: "inbound_account_not_found" };
   }
 
   const { data: automations = [], error } = await supabase
@@ -1607,7 +1611,7 @@ async function processInboundMessage({ messaging }) {
 
   if (error) throw error;
   const automation = automations.find((rule) => dmAutomationMatches(rule, text));
-  if (!automation) return;
+  if (!automation) return { status: "skipped", reason: "no_dm_keyword_match" };
 
   let interaction = await findInteraction({
     automationId: automation.id,
@@ -1673,13 +1677,23 @@ async function processWebhook(body) {
       }
 
       for (const messaging of entry.messaging || []) {
-        if (
-          messaging.postback?.payload ||
-          messaging.message?.quick_reply?.payload
-        ) {
-          await processPostback({ body, messaging });
-        } else if (messaging.message?.text) {
-          await processInboundMessage({ messaging });
+        const route = messagingRoute(messaging);
+        try {
+          let outcome;
+          if (route === "postback") {
+            outcome = await processPostback({ body, messaging });
+          } else if (route === "text") {
+            outcome = await processInboundMessage({ messaging });
+          } else {
+            outcome = { status: "skipped", reason: "unsupported_messaging_event" };
+          }
+          messagingDiagnostics.record({ entryId: entry.id, event: messaging,
+            status: outcome?.status || "processed",
+            reason: outcome?.reason || "handler_completed" });
+        } catch (error) {
+          messagingDiagnostics.record({ entryId: entry.id, event: messaging,
+            status: "failed", reason: error.response?.data?.error?.message || error.message });
+          throw error;
         }
       }
     }
@@ -1846,6 +1860,7 @@ router.get("/instagram", (req, res) => {
 });
 
 router.post("/instagram", (req, res) => {
+  messagingDiagnostics.received(req.body);
   res.sendStatus(200);
   processWebhook(req.body).catch((error) => {
     console.error("❌ Async webhook error:", error.message);
