@@ -85,6 +85,7 @@ export default function AutomationBuilder({
   );
   const [retriggering, setRetriggering] = useState(false);
   const [retriggerResult, setRetriggerResult] = useState(null);
+  const [retriggerNoticeKey, setRetriggerNoticeKey] = useState(0);
   const isActive = initialAutomation?.is_active !== false;
   const [selectedPost, setSelectedPost] = useState(
     initialAutomation?.media_id || ""
@@ -240,7 +241,11 @@ export default function AutomationBuilder({
   };
 
   const retriggerMissedComments = async () => {
-    if (retriggerInFlight.current) return;
+    setRetriggerNoticeKey(current => current + 1);
+    if (retriggerInFlight.current) {
+      setRetriggerResult({ tone: "info", message: "Previous re-trigger is in progress." });
+      return;
+    }
     if (!editing) {
       setRetriggerResult({
         tone: "info",
@@ -259,7 +264,9 @@ export default function AutomationBuilder({
       );
       setRetriggerResult({
         tone: data.failed ? "warning" : "success",
-        summary: data,
+        message: data.failed
+          ? "Re-trigger completed. Some comments need a retry."
+          : "Automation re-triggered successfully.",
       });
     } catch (err) {
       setRetriggerResult({
@@ -312,7 +319,7 @@ export default function AutomationBuilder({
           {triggerType === "comment" && <button
             type="button"
             onClick={retriggerMissedComments}
-            disabled={retriggering}
+            aria-busy={retriggering}
             title="Check the selected post for comments this automation missed"
             className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 text-sm font-bold text-brand-700 transition hover:bg-brand-100 disabled:cursor-wait disabled:opacity-60 sm:flex-none"
           >
@@ -330,7 +337,7 @@ export default function AutomationBuilder({
         </div>
       </div>
 
-      <RetriggerStatus loading={retriggering} result={retriggerResult} />
+      <RetriggerStatus loading={retriggering} result={retriggerResult} noticeKey={retriggerNoticeKey} />
 
       <div className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
         <BuilderSection step="1" title={triggerType ? "Trigger" : "Select a trigger type"} complete={Boolean(triggerType)}>

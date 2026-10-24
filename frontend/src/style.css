@@ -92,8 +92,19 @@
   to { background-position: -20% 0; }
 }
 
+@keyframes retrigger-notice-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.retrigger-notice-shake {
+  animation: retrigger-notice-shake 300ms ease-in-out 2;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton { animation: none; }
+  .retrigger-notice-shake { animation: none; }
 }
 
 @media (min-width: 768px) {
