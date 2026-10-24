@@ -71,7 +71,7 @@ test("processing retains postback and keyword handlers and logs their outcomes",
   const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
     console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
     messagingDiagnostics: { record: row => traces.push(row) },
-    processPostback: async () => { calls.push("postback"); return { status: "skipped", reason: "unsupported_postback_payload" }; },
+    runPostback: async () => { calls.push("postback"); return { status: "skipped", reason: "unsupported_postback_payload" }; },
     processInboundMessage: async () => { calls.push("keyword"); },
     saveWebhookEvent: async () => { throw new Error("unexpected error event"); },
   });
@@ -86,7 +86,7 @@ test("existing processing failure is still reported with the original error", as
   const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
     console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
     messagingDiagnostics: { record: row => traces.push(row) },
-    processPostback: async () => { throw new Error("provider unavailable"); },
+    runPostback: async () => { throw new Error("provider unavailable"); },
     saveWebhookEvent: async row => errors.push(row),
   });
   await process({ entry: [{ id: "entry", messaging: [click] }] });
@@ -137,7 +137,7 @@ test('Meta changes postbacks and quick replies reach existing handlers, never th
   const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
     console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
     messagingDiagnostics: { record: row => traces.push(row) },
-    processPostback: async ({ messaging }) => { calls.push(messaging.postback ? 'button' : 'quick_reply'); },
+    runPostback: async ({ messaging }) => { calls.push(messaging.postback ? 'button' : 'quick_reply'); },
     processInboundMessage: async () => { calls.push('keyword'); },
     processComment: async () => { calls.push('comment'); },
     saveWebhookEvent: async () => { throw new Error('unexpected error event'); },
@@ -172,7 +172,7 @@ test('standby inside changes remains observational and is never sent through the
   const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
     console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
     messagingDiagnostics: { record() {} },
-    processPostback: async () => { calls.push('postback'); },
+    runPostback: async () => { calls.push('postback'); },
     processComment: async () => { calls.push('comment'); },
     saveWebhookEvent: async () => { throw new Error('unexpected error event'); },
   });
