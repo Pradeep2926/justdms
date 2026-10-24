@@ -17,9 +17,6 @@ const messagingDiagnostics = createWebhookDiagnostics({ db: supabase });
 const { createWebhookReceiver } = require("../lib/webhookReceipt");
 const { createCommentQueue, commentWasHandled, recoveredOpeningState } = require("../lib/commentProcessing");
 const serializeComment = createCommentQueue();
-const { stableId, createPostbackRunner, createClickRecovery } = require("../lib/clickRecovery");
-const RECOVERY_PILOT_ACCOUNT = "5af5cb07-e975-43d5-a539-84dec67a9ab2";
-const runPostback = createPostbackRunner({ db: supabase, processPostback, accountId: RECOVERY_PILOT_ACCOUNT });
 
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
@@ -1342,7 +1339,7 @@ async function processCommentUnlocked({ body, entry, change, value, automationOv
   };
 }
 
-async function processPostback({ body, messaging, recovery }) {
+async function processPostback({ body, messaging }) {
   const senderId = messaging?.sender?.id;
   const recipientId = messaging?.recipient?.id;
   const payload =
@@ -1383,15 +1380,6 @@ async function processPostback({ body, messaging, recovery }) {
 
   if (interactionError) throw interactionError;
   if (!interaction) return { status: "skipped", reason: "postback_interaction_not_found" };
-
-  if (recovery && (
-    !automation.is_active || interaction.automation_id !== automation.id ||
-    interaction.current_step !== "waiting_for_get_details" ||
-    interaction.opening_dm_sent_at !== recovery.openingAt ||
-    String(interaction.instagram_sender_id) !== String(senderId) ||
-    interaction.resource_delivered_at || interaction.resource_delivery_status === "delivered" ||
-    (await hasSentResource(interaction.id))
-  )) return { status: "skipped", reason: "recovery_no_longer_pending" };
 
   let account =
     (await getAccountById(interaction.connected_account_id)) ||
@@ -1434,19 +1422,6 @@ async function processPostback({ body, messaging, recovery }) {
       errorMessage,
     });
     return { status: "skipped", reason: "postback_account_mismatch" };
-  }
-
-  if (recovery) {
-    const { error } = await supabase.from("automation_events").insert({
-      id: stableId(`recovered-click:${interaction.id}:${recovery.messageId}`),
-      interaction_id: interaction.id, automation_id: automation.id,
-      connected_account_id: account.id, instagram_sender_id: senderId,
-      event_type: "button_click_recovered", direction: "inbound", status: "received",
-      payload: { message_id: recovery.messageId, clicked_at: messaging.timestamp,
-        source: "instagram_conversation", opening_dm_sent_at: recovery.openingAt },
-    });
-    if (error?.code === "23505") return { status: "skipped", reason: "recovery_evidence_already_used" };
-    if (error) throw error;
   }
 
   account = await bindMessagingOwnerId(account, recipientId);
@@ -1741,7 +1716,7 @@ async function processWebhook(body) {
         try {
           let outcome;
           if (route === "postback") {
-            outcome = await runPostback({ body, messaging });
+            outcome = await processPostback({ body, messaging });
           } else if (route === "text") {
             outcome = await processInboundMessage({ messaging });
           } else {
@@ -1940,24 +1915,3 @@ router.post("/instagram", createWebhookReceiver({
 }));
 
 module.exports = router;
-
-// Pilot is restricted to careerstackk; an empty/other value disables it.
-const recoveryAccountId = process.env.INSTAGRAM_CLICK_RECOVERY_ACCOUNT_ID === "off"
-  ? null : RECOVERY_PILOT_ACCOUNT;
-const recoverClicks = createClickRecovery({
-  db: supabase, getAccount: getAccountById, runPostback, accountId: recoveryAccountId,
-  async getMessages(account, senderId) {
-    const owner = account.messaging_owner_id || account.instagram_user_id;
-    const options = { headers: { Authorization: `Bearer ${account.access_token}` }, timeout: 15000 };
-    const conversations = await axios.get(`${INSTAGRAM_GRAPH_URL}/${owner}/conversations`, {
-      ...options, params: { platform: "instagram", user_id: senderId, fields: "id", limit: 2 },
-    });
-    if (conversations.data?.data?.length !== 1) return [];
-    const conversation = conversations.data.data[0];
-    const messages = await axios.get(`${INSTAGRAM_GRAPH_URL}/${conversation.id}/messages`, {
-      ...options, params: { fields: "id,created_time,from,to,message", limit: 50 },
-    });
-    return messages.data?.data || [];
-  },
-});
-module.exports.recoverClicks = recoverClicks;

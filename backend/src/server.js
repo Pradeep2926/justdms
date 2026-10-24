@@ -97,10 +97,3 @@ const bookingExpiryTimer = setInterval(() => {
   expireBookingHolds().catch((error) => console.error("Booking expiration failed:", error));
 }, 60 * 1000);
 bookingExpiryTimer.unref();
-
-if (process.env.NODE_ENV === "production") {
-  const recover = () => webhookRoutes.recoverClicks()
-    .catch(error => console.error("Instagram click recovery failed:", error.message));
-  const recoveryTimer = setInterval(recover, 60 * 1000);
-  recoveryTimer.unref();
-}

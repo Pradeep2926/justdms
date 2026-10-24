@@ -24,23 +24,19 @@ function harness({ followRequired = true, follow = "following", boundOwner, deli
     connected_account_id: account.id,
     current_step: delivered ? "resource_delivered" : "waiting_for_get_details",
     resource_delivery_status: delivered ? "delivered" : "not_delivered",
-    instagram_sender_id: "correct-sender",
-    opening_dm_sent_at: "2026-10-24T04:01:16.456Z",
     raw_context: boundOwner ? { messaging_owner_id: boundOwner } : {},
   };
   const events = [], writes = [], sends = [];
   const context = {
     console: { log() {}, warn() {}, error() {} },
     parseAutomationPostback, withMessagingSender,
-    stableId: require("../lib/clickRecovery").stableId,
     supabase: {
       from(table) {
         const query = {
           select() { return query; }, eq() { return query; },
-          async insert() { return {}; },
           async maybeSingle() {
             return { data: structuredClone(table === "automations"
-              ? { id: automationId, is_active: true, follow_required: followRequired }
+              ? { id: automationId, follow_required: followRequired }
               : interaction) };
           },
         };
@@ -73,9 +69,9 @@ function harness({ followRequired = true, follow = "following", boundOwner, deli
     sendInstagramMessage: async () => sends.push("still_not_following"),
   };
   const processPostback = vm.runInNewContext(`${handlerSource}\nprocessPostback`, context);
-  async function click(recipient = ownerId, action = "GET_DETAILS", quickReply = false, recovery) {
+  async function click(recipient = ownerId, action = "GET_DETAILS", quickReply = false) {
     const payload = `${action}:${automationId}:${interactionId}`;
-    return processPostback({ recovery, messaging: {
+    return processPostback({ messaging: {
       sender: { id: recipient === otherOwnerId ? "other-scoped-sender" : "correct-sender" },
       recipient: { id: recipient },
       ...(quickReply ? { message: { quick_reply: { payload } } } : { postback: { payload } }),
@@ -152,21 +148,4 @@ test("missing recipient cannot mutate an interaction", async () => {
   await h.click(null);
   assert.deepEqual(h.writes, []);
   assert.deepEqual(h.sends, []);
-});
-
-for (const follow of ['following', 'not_following', 'unknown']) {
-  test(`recovered click preserves the existing ${follow} follow gate`, async () => {
-    const h = harness({ follow });
-    await h.click(ownerId, 'GET_DETAILS', false, {messageId:'evidence',openingAt:h.interaction.opening_dm_sent_at});
-    assert.equal(h.sends[0], 'follow_check');
-    if(follow==='following')assert.equal(h.sends[1].type,'resource');
-    else assert.equal(h.sends[1],'follow_prompt');
-  });
-}
-test('recovery cannot resend after a webhook already delivered or after a new opening', async () => {
-  for(const delivered of [true,false]){
-    const h=harness({delivered});
-    const outcome=await h.click(ownerId,'GET_DETAILS',false,{messageId:'evidence',openingAt:delivered?h.interaction.opening_dm_sent_at:'stale-opening'});
-    assert.equal(outcome.reason,'recovery_no_longer_pending');assert.deepEqual(h.sends,[]);
-  }
 });
