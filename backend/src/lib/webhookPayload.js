@@ -23,4 +23,38 @@ function withMessagingSender(interaction, senderId) {
   return { ...interaction, instagram_sender_id: String(senderId) };
 }
 
-module.exports = { parseAutomationPostback, withMessagingSender };
+const MESSAGING_FIELDS = new Set([
+  "messages", "messaging_postbacks", "messaging_seen", "message_reactions",
+  "message_edit", "messaging_referral", "messaging_handover", "messaging_optins", "standby",
+]);
+
+function isMessagingChange(change) {
+  return MESSAGING_FIELDS.has(change?.field);
+}
+
+function messagingEvents(entry) {
+  const events = [];
+  for (const channel of ["messaging", "standby"]) {
+    for (const event of Array.isArray(entry?.[channel]) ? entry[channel] : []) {
+      events.push({ channel, event });
+    }
+  }
+  for (const change of Array.isArray(entry?.changes) ? entry.changes : []) {
+    if (isMessagingChange(change) && change.value) {
+      events.push({ channel: change.field === "standby" ? "standby" : `changes.${change.field}`, event: change.value });
+    }
+  }
+  // An envelope may expose the same message in both supported representations.
+  const seen = new Set();
+  return events.filter(({ channel, event }) => {
+    const mid = event?.postback?.mid || event?.message?.mid;
+    if (!mid || channel === "standby") return true;
+    const key = JSON.stringify([event.sender?.id, event.recipient?.id, mid,
+      event.postback?.payload || event.message?.quick_reply?.payload || null]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+module.exports = { parseAutomationPostback, withMessagingSender, isMessagingChange, messagingEvents };

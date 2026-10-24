@@ -1,3 +1,5 @@
+const { messagingEvents } = require("./webhookPayload");
+
 function messagingRoute(event) {
   if (event?.postback?.payload || event?.message?.quick_reply?.payload) return "postback";
   if (event?.message?.text) return "text";
@@ -39,14 +41,12 @@ function createWebhookDiagnostics({ db, logger = console }) {
 
   function received(body) {
     for (const entry of Array.isArray(body?.entry) ? body.entry : []) {
-      for (const channel of ["messaging", "standby"]) {
-        for (const event of Array.isArray(entry?.[channel]) ? entry[channel] : []) {
-          // Echoes are outbound copies, not customer clicks.
-          if (event?.message?.is_echo && !event?.postback && !event?.message?.quick_reply) continue;
-          record({ entryId: entry.id, channel, event,
-            status: channel === "standby" ? "skipped" : "received",
-            reason: channel === "standby" ? "standby_event_not_processed" : "webhook_received" });
-        }
+      for (const { channel, event } of messagingEvents(entry)) {
+        // Echoes are outbound copies, not customer clicks.
+        if (event?.message?.is_echo && !event?.postback && !event?.message?.quick_reply) continue;
+        record({ entryId: entry.id, channel, event,
+          status: channel === "standby" ? "skipped" : "received",
+          reason: channel === "standby" ? "standby_event_not_processed" : "webhook_received" });
       }
     }
   }

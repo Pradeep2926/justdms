@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const { createWebhookDiagnostics, messagingRoute } = require("./webhookDiagnostics");
+const { messagingEvents, isMessagingChange } = require("./webhookPayload");
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const click = { sender: { id: "customer" }, recipient: { id: "business" },
   timestamp: 123, postback: { mid: "click-id", payload: "legacy-payload" } };
@@ -68,7 +69,7 @@ const processSource = source.slice(source.indexOf("async function processWebhook
 test("processing retains postback and keyword handlers and logs their outcomes", async () => {
   const calls = [], traces = [];
   const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
-    console: { error() {} }, messagingRoute,
+    console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
     messagingDiagnostics: { record: row => traces.push(row) },
     processPostback: async () => { calls.push("postback"); return { status: "skipped", reason: "unsupported_postback_payload" }; },
     processInboundMessage: async () => { calls.push("keyword"); },
@@ -83,7 +84,7 @@ test("processing retains postback and keyword handlers and logs their outcomes",
 test("existing processing failure is still reported with the original error", async () => {
   const traces = [], errors = [];
   const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
-    console: { error() {} }, messagingRoute,
+    console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
     messagingDiagnostics: { record: row => traces.push(row) },
     processPostback: async () => { throw new Error("provider unavailable"); },
     saveWebhookEvent: async row => errors.push(row),
@@ -94,18 +95,23 @@ test("existing processing failure is still reported with the original error", as
   assert.equal(errors[0].message, "provider unavailable");
 });
 
-test("HTTP acknowledgement and processing do not wait for diagnostics persistence", async () => {
+test("after durable receipt, acknowledgement and processing do not wait for optional diagnostics", async () => {
   const h = diagnostics(() => new Promise(() => {}));
   const calls = [];
   let receive;
   const routeSource = source.slice(source.indexOf('router.post("/instagram",'), source.indexOf("module.exports = router"));
   vm.runInNewContext(routeSource, {
     router: { post: (_, handler) => { receive = handler; } },
+    createWebhookReceiver: require("./webhookReceipt").createWebhookReceiver,
+    supabase: { from: () => ({
+      insert: async () => ({ error: null }),
+      update: () => ({ eq: async () => ({ error: null }) }),
+    }) },
     messagingDiagnostics: h.observer,
     processWebhook: async () => { calls.push("processing"); },
     console: { error() {} },
   });
-  receive({ body: { entry: [{ messaging: [click] }] } }, { sendStatus: status => calls.push(status) });
+  await receive({ body: { entry: [{ messaging: [click] }] } }, { sendStatus: status => calls.push(status) });
   assert.deepEqual(calls, [200, "processing"]);
   assert.equal(h.rows.length, 1);
 });
@@ -124,4 +130,52 @@ test("connection subscription includes button events alongside comments and mess
   assert.equal(requests.length, 1);
   assert.equal(requests[0][2].params.subscribed_fields, "comments,messages,messaging_postbacks");
   assert.equal(requests[0][0], "https://graph.instagram.com/v19.0/account/subscribed_apps");
+});
+
+test('Meta changes postbacks and quick replies reach existing handlers, never the comment handler', async () => {
+  const calls = [], traces = [];
+  const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
+    console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
+    messagingDiagnostics: { record: row => traces.push(row) },
+    processPostback: async ({ messaging }) => { calls.push(messaging.postback ? 'button' : 'quick_reply'); },
+    processInboundMessage: async () => { calls.push('keyword'); },
+    processComment: async () => { calls.push('comment'); },
+    saveWebhookEvent: async () => { throw new Error('unexpected error event'); },
+  });
+  await process({ object: 'instagram', entry: [{ id: 'account', changes: [
+    { field: 'messaging_postbacks', value: click },
+    { field: 'messages', value: { ...click, postback: undefined, message: { mid: 'quick-id', text: 'Get details', quick_reply: { payload: 'payload' } } } },
+    { field: 'messages', value: { sender: { id: 'customer' }, recipient: { id: 'business' }, message: { text: 'LINK' } } },
+    { field: 'comments', value: { id: 'comment' } },
+  ] }] });
+  assert.deepEqual(calls, ['comment', 'button', 'quick_reply', 'keyword']);
+  assert.equal(traces[0].channel, 'changes.messaging_postbacks');
+});
+
+test('both webhook representations log a single receipt and process a repeated message once', async () => {
+  const entry = { id: 'account', messaging: [click], changes: [{ field: 'messaging_postbacks', value: click }] };
+  const h = diagnostics(); h.observer.received({ entry: [entry] });
+  assert.equal(h.rows.length, 1);
+  assert.equal(messagingEvents(entry).length, 1);
+});
+
+test('changes postback receipt is searchable by sender and preserves the payload', () => {
+  const h = diagnostics();
+  h.observer.received({ entry: [{ id: 'account', changes: [{ field: 'messaging_postbacks', value: click }] }] });
+  assert.equal(h.rows[0].raw_payload.sender_id, 'customer');
+  assert.equal(h.rows[0].raw_payload.channel, 'changes.messaging_postbacks');
+  assert.equal(h.rows[0].raw_payload.event.postback.mid, 'click-id');
+});
+
+test('standby inside changes remains observational and is never sent through the active handler', async () => {
+  const calls = [];
+  const process = vm.runInNewContext(`${processSource}\nprocessWebhook`, {
+    console: { error() {} }, messagingRoute, messagingEvents, isMessagingChange,
+    messagingDiagnostics: { record() {} },
+    processPostback: async () => { calls.push('postback'); },
+    processComment: async () => { calls.push('comment'); },
+    saveWebhookEvent: async () => { throw new Error('unexpected error event'); },
+  });
+  await process({ entry: [{ changes: [{ field: 'standby', value: click }] }] });
+  assert.deepEqual(calls, []);
 });

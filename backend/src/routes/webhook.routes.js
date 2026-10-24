@@ -4,6 +4,8 @@ const supabase = require("../lib/supabase");
 const {
   parseAutomationPostback,
   withMessagingSender,
+  isMessagingChange,
+  messagingEvents,
 } = require("../lib/webhookPayload");
 const {
   isRetryableMetaError,
@@ -12,6 +14,7 @@ const {
 const { publicResourceUrl } = require("../lib/resourceLink");
 const { createWebhookDiagnostics, messagingRoute } = require("../lib/webhookDiagnostics");
 const messagingDiagnostics = createWebhookDiagnostics({ db: supabase });
+const { createWebhookReceiver } = require("../lib/webhookReceipt");
 const { createCommentQueue, commentWasHandled, recoveredOpeningState } = require("../lib/commentProcessing");
 const serializeComment = createCommentQueue();
 
@@ -1702,12 +1705,13 @@ async function processWebhook(body) {
 
     for (const entry of entries) {
       for (const change of entry.changes || []) {
-        if (change?.value) {
+        if (change?.value && !isMessagingChange(change)) {
           await processComment({ body, entry, change, value: change.value });
         }
       }
 
-      for (const messaging of entry.messaging || []) {
+      for (const { channel, event: messaging } of messagingEvents(entry)) {
+        if (channel === "standby") continue;
         const route = messagingRoute(messaging);
         try {
           let outcome;
@@ -1718,11 +1722,11 @@ async function processWebhook(body) {
           } else {
             outcome = { status: "skipped", reason: "unsupported_messaging_event" };
           }
-          messagingDiagnostics.record({ entryId: entry.id, event: messaging,
+          messagingDiagnostics.record({ entryId: entry.id, channel, event: messaging,
             status: outcome?.status || "processed",
             reason: outcome?.reason || "handler_completed" });
         } catch (error) {
-          messagingDiagnostics.record({ entryId: entry.id, event: messaging,
+          messagingDiagnostics.record({ entryId: entry.id, channel, event: messaging,
             status: "failed", reason: error.response?.data?.error?.message || error.message });
           throw error;
         }
@@ -1739,6 +1743,7 @@ async function processWebhook(body) {
         error.message ||
         "Webhook processing failed",
     });
+    return { status: "failed", message: error.response?.data?.error?.message || error.message || "Webhook processing failed" };
   }
 }
 
@@ -1905,12 +1910,8 @@ router.get("/instagram", (req, res) => {
   return res.sendStatus(403);
 });
 
-router.post("/instagram", (req, res) => {
-  messagingDiagnostics.received(req.body);
-  res.sendStatus(200);
-  processWebhook(req.body).catch((error) => {
-    console.error("❌ Async webhook error:", error.message);
-  });
-});
+router.post("/instagram", createWebhookReceiver({
+  db: supabase, processWebhook, diagnostics: messagingDiagnostics,
+}));
 
 module.exports = router;
