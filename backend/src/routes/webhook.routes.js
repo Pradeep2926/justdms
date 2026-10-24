@@ -12,6 +12,8 @@ const {
 const { publicResourceUrl } = require("../lib/resourceLink");
 const { createWebhookDiagnostics, messagingRoute } = require("../lib/webhookDiagnostics");
 const messagingDiagnostics = createWebhookDiagnostics({ db: supabase });
+const { createCommentQueue, commentWasHandled, recoveredOpeningState } = require("../lib/commentProcessing");
+const serializeComment = createCommentQueue();
 
 const router = express.Router();
 const GRAPH_VERSION = "v19.0";
@@ -1007,7 +1009,14 @@ async function sendFollowPrompt({ account, automation, interaction }) {
   });
 }
 
-async function processComment({ body, entry, change, value, automationOverride = null }) {
+async function processComment(args) {
+  const value = args.value;
+  const mediaId = value?.media?.id || value?.media_id;
+  const senderId = value?.from?.id || value?.sender_id || value?.id || value?.comment_id;
+  return serializeComment(`${mediaId}:${senderId}`, () => processCommentUnlocked(args));
+}
+
+async function processCommentUnlocked({ body, entry, change, value, automationOverride = null }) {
   const eventType = change?.field || "comments";
   const commentId = value?.id || value?.comment_id;
   const mediaId = value?.media?.id || value?.media_id;
@@ -1109,6 +1118,16 @@ async function processComment({ body, entry, change, value, automationOverride =
     instagramSenderId: senderId,
     commentId,
   });
+
+  if (interaction?.comment_id === commentId &&
+      commentWasHandled(interaction, automation.opening_dm_enabled !== false)) {
+    const recovered = recoveredOpeningState(interaction);
+    if (recovered) await upsertInteraction(interaction, recovered);
+    await updateWebhookEvent(webhookEvent?.id, {
+      status: "skipped", message: "DM flow already started for this comment",
+    });
+    return { status: "skipped", reason: "already_handled", commentId };
+  }
 
   const sameUserNewComment =
     interaction?.comment_id && interaction.comment_id !== commentId;
@@ -1262,9 +1281,21 @@ async function processComment({ body, entry, change, value, automationOverride =
         opening_dm_sent_at: new Date().toISOString(),
         current_step: "waiting_for_get_details",
         resource_delivery_status:
-          interaction.resource_delivery_status || "not_delivered",
+          interaction.resource_delivery_status === "delivered" ? "delivered" : "not_delivered",
       });
+      deliveryFailed = false;
     } catch (error) {
+      // A successful send may have been persisted by another attempt. Never
+      // replace that success with the error from an extra private reply.
+      const { data: latest, error: latestError } = await supabase
+        .from("automation_interactions").select("*").eq("id", interaction.id).maybeSingle();
+      if (latestError) throw latestError;
+      if (latest?.comment_id === commentId && commentWasHandled(latest, true)) {
+        const recovered = recoveredOpeningState(latest);
+        if (recovered) await upsertInteraction(latest, recovered);
+        await updateWebhookEvent(webhookEvent?.id, { status: "skipped", message: "DM already sent by another attempt" });
+        return { status: "skipped", reason: "already_handled", commentId };
+      }
       const errorMessage =
         error.response?.data?.error?.message ||
         error.message ||
@@ -1778,7 +1809,7 @@ router.post("/retrigger/:automationId", async (req, res) => {
     if (commentIds.length) {
       const { data = [], error } = await supabase
         .from("automation_interactions")
-        .select("comment_id,public_reply_sent_at,opening_dm_sent_at,resource_delivered_at")
+        .select("id,comment_id,current_step,resource_delivery_status,opening_dm_sent_at,resource_delivered_at")
         .eq("automation_id", automation.id);
       if (error) throw error;
       const eligibleCommentIds = new Set(commentIds);
@@ -1787,11 +1818,25 @@ router.post("/retrigger/:automationId", async (req, res) => {
       );
     }
 
-    const handledIds = new Set(
-      existingInteractions
-        .filter((item) => item.public_reply_sent_at)
-        .map((item) => item.comment_id)
-    );
+    const handledIds = new Set(existingInteractions
+      .filter(item => commentWasHandled(item, automation.opening_dm_enabled !== false))
+      .map(item => item.comment_id));
+    // An interaction keeps only its latest comment; event history also protects
+    // older comments from the same person from being sent again.
+    const successfulTypes = automation.opening_dm_enabled !== false
+      ? ["opening_dm_sent", "resource_sent"] : ["follow_prompt_sent", "resource_sent"];
+    if (commentIds.length) {
+      const { data: sentEvents = [], error: sentEventsError } = await supabase
+        .from("automation_events").select("comment_id")
+        .eq("automation_id", automation.id).eq("status", "sent")
+        .in("event_type", successfulTypes).in("comment_id", commentIds);
+      if (sentEventsError) throw sentEventsError;
+      for (const event of sentEvents) handledIds.add(event.comment_id);
+    }
+    for (const item of existingInteractions) {
+      const recovered = recoveredOpeningState(item);
+      if (recovered) await upsertInteraction(item, recovered);
+    }
     const summary = {
       checked: comments.length,
       eligible: eligible.length,
@@ -1826,7 +1871,8 @@ router.post("/retrigger/:automationId", async (req, res) => {
           value,
           automationOverride: automation,
         });
-        if (result?.status === "processed") summary.processed += 1;
+        if (result?.status === "skipped" && result.reason === "already_handled") summary.already_handled += 1;
+        else if (result?.status === "processed") summary.processed += 1;
         else summary.failed += 1;
       } catch (error) {
         summary.failed += 1;

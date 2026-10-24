@@ -5,6 +5,7 @@ const {
 } = require("../lib/automationAccess");
 
 const DAY = 24 * 60 * 60 * 1000;
+const { recoveredOpeningState } = require("../lib/commentProcessing");
 const PAGE_SIZE = 500;
 const tokenNeedsAttention = token => token.status !== "active";
 
@@ -80,7 +81,7 @@ function buildAdminOverview({ authUsers, profiles, accounts, subscriptions, auto
   const activity = emptyActivity();
   for (const row of interactions) {
     const target = automationById.get(row.automation_id)?.activity;
-    const step = String(row.current_step || "");
+    const step = String(recoveredOpeningState(row)?.current_step || row.current_step || "");
     // Some old rows retain failed delivery status after progressing. Use the actual step.
     const state = step.includes("failed") ? "failed" : step === "resource_delivered" || row.resource_delivery_status === "delivered" ? "delivered" : ["waiting_for_get_details", "waiting_for_follow_confirmation", "still_not_following"].includes(step) ? "waiting" : "other";
     for (const bucket of [activity, target].filter(Boolean)) {
@@ -150,7 +151,7 @@ async function loadAdminOverview(db, now = Date.now()) {
     readAll(db, "instagram_accounts", "id,user_id,user_email,username,instagram_username,auth_provider,token_status,token_expires_at,expires_at,connected_at,last_sync"),
     readAll(db, "subscriptions", "id,user_id,user_email,status,billing_cycle,ends_at,current_end,referral_access_end,cancel_at_period_end,updated_at"),
     readAll(db, "automations", "id,user_id,user_email,name,is_active,created_at,trigger_value,follow_required"),
-    readAll(db, "automation_interactions", "id,automation_id,current_step,resource_delivery_status,created_at,updated_at", "updated_at", since),
+    readAll(db, "automation_interactions", "id,automation_id,current_step,resource_delivery_status,opening_dm_sent_at,resource_delivered_at,created_at,updated_at", "updated_at", since),
     readAll(db, "automation_events", "id,automation_id,event_type,status,error_message,created_at", "created_at", since),
   ]);
   return buildAdminOverview({ authUsers, profiles, accounts, subscriptions, automations, interactions, events }, now);

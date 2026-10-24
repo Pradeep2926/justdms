@@ -40,6 +40,15 @@ test("paid subscriptions with a past end date do not count as paid Pro", () => {
   assert.equal(data.summary.paidProUsers, 0);
 });
 
+test("admin shows a successful opening DM as waiting despite an old duplicate failure", () => {
+  const data = buildAdminOverview({ authUsers: [], profiles: [], accounts: [], subscriptions: [], events: [],
+    automations: [{ id: "a", user_email: "owner@example.com" }],
+    interactions: [{ automation_id: "a", current_step: "opening_dm_failed", resource_delivery_status: "failed", opening_dm_sent_at: "2026-10-24T02:47:00Z" }],
+  }, now);
+  assert.equal(data.users[0].automations[0].activity.failed, 0);
+  assert.equal(data.users[0].automations[0].activity.waiting, 1);
+});
+
 test("loader paginates auth and table records and selects no credential columns", async () => {
   const tables = [];
   const users = Array.from({ length: 501 }, (_, i) => ({ id: `u${i}`, email: `u${i}@example.com` }));

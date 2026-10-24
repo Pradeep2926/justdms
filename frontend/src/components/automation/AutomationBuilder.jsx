@@ -18,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import PostSelector from "./PostSelector";
+import RetriggerStatus from "./RetriggerStatus";
 import api from "../../api/api";
 
 const REPLY_SEPARATOR = "\n---\n";
@@ -69,6 +70,8 @@ export default function AutomationBuilder({
   onCancel,
 }) {
   const editing = Boolean(initialAutomation?.id);
+  const nameInputRef = useRef(null);
+  const retriggerInFlight = useRef(false);
   const [automationName, setAutomationName] = useState(
     initialAutomation?.name || "Untitled automation"
   );
@@ -237,6 +240,7 @@ export default function AutomationBuilder({
   };
 
   const retriggerMissedComments = async () => {
+    if (retriggerInFlight.current) return;
     if (!editing) {
       setRetriggerResult({
         tone: "info",
@@ -246,6 +250,7 @@ export default function AutomationBuilder({
     }
 
     try {
+      retriggerInFlight.current = true;
       setRetriggering(true);
       setRetriggerResult(null);
       const { data } = await api.post(
@@ -254,7 +259,7 @@ export default function AutomationBuilder({
       );
       setRetriggerResult({
         tone: data.failed ? "warning" : "success",
-        message: `Checked ${data.checked} comments. ${data.eligible} matched this automation. Responded to ${data.processed} missed comments, skipped ${data.already_handled} already handled comments${data.not_matching ? `, ignored ${data.not_matching} comments that did not match the keyword` : ""}${data.failed ? `, and ${data.failed} could not be processed` : ""}.`,
+        summary: data,
       });
     } catch (err) {
       setRetriggerResult({
@@ -265,6 +270,7 @@ export default function AutomationBuilder({
           "Failed to check missed comments.",
       });
     } finally {
+      retriggerInFlight.current = false;
       setRetriggering(false);
     }
   };
@@ -282,14 +288,23 @@ export default function AutomationBuilder({
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
+            <div className="flex max-w-xl items-center gap-1 rounded-md transition focus-within:bg-brand-50/50">
             <input
+              ref={nameInputRef}
+              style={{ width: `${Math.max(12, automationName.length + 1)}ch` }}
               value={automationName}
               onChange={(event) => setAutomationName(event.target.value)}
               aria-label="Automation name"
               maxLength={80}
-              className="w-full max-w-xl border-0 bg-transparent p-0 text-lg font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:ring-0 sm:text-xl"
+              className="min-w-0 border-0 bg-transparent p-0 text-lg font-bold text-slate-950 outline-none placeholder:text-slate-400 focus:ring-0 sm:text-xl"
               placeholder="Untitled automation"
             />
+            <button type="button" aria-label="Edit automation name" title="Edit automation name"
+              onClick={() => { nameInputRef.current?.focus(); nameInputRef.current?.select(); }}
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-brand-50 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">
+              <Pencil aria-hidden="true" className="h-4 w-4" />
+            </button>
+            </div>
             <p className="mt-0.5 text-xs text-slate-500 sm:text-sm">Set a trigger, then choose what JustDMs should send.</p>
           </div>
         </div>
@@ -315,22 +330,7 @@ export default function AutomationBuilder({
         </div>
       </div>
 
-      {retriggerResult && (
-        <div
-          role="status"
-          className={`mx-5 mt-5 rounded-lg border px-4 py-3 text-sm font-medium sm:mx-8 ${
-            retriggerResult.tone === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : retriggerResult.tone === "error"
-                ? "border-red-200 bg-red-50 text-red-800"
-                : retriggerResult.tone === "warning"
-                  ? "border-amber-200 bg-amber-50 text-amber-800"
-                  : "border-sky-200 bg-sky-50 text-sky-800"
-          }`}
-        >
-          {retriggerResult.message}
-        </div>
-      )}
+      <RetriggerStatus loading={retriggering} result={retriggerResult} />
 
       <div className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">
         <BuilderSection step="1" title={triggerType ? "Trigger" : "Select a trigger type"} complete={Boolean(triggerType)}>
