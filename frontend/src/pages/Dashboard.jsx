@@ -47,7 +47,8 @@ export default function Dashboard() {
 
   return (
     <AppLayout
-      title={connected && ig ? `Welcome back, @${ig.username}` : "Welcome to JustDMs"}
+      compactHeader
+      title={connected && ig ? <><span className="sm:hidden">Welcome back</span><span className="hidden sm:inline">Welcome back, @{ig.username}</span></> : "Welcome to JustDMs"}
       subtitle={connected ? "Grow your audience with simple, powerful automations." : "Connect Instagram to get started."}
       action={connected ? <HeaderActions ig={ig} /> : null}
     >
@@ -93,12 +94,13 @@ export default function Dashboard() {
 }
 
 function HeaderActions({ ig }) {
+  const [failedImage, setFailedImage] = useState(null);
   return (
     <div className="flex items-center gap-3">
-      {ig?.profile_picture_url ? (
-        <img src={ig.profile_picture_url} alt="" className="h-11 w-11 rounded-lg object-cover ring-2 ring-white shadow-sm" />
+      {ig?.profile_picture_url && failedImage !== ig.profile_picture_url ? (
+        <img src={ig.profile_picture_url} onError={() => setFailedImage(ig.profile_picture_url)} alt="Instagram profile" className="h-10 w-10 rounded-full object-cover ring-2 ring-white shadow-sm sm:h-11 sm:w-11" />
       ) : (
-        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400 text-white shadow-sm">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400 text-white shadow-sm sm:h-11 sm:w-11">
           <Instagram className="h-5 w-5" />
         </span>
       )}
