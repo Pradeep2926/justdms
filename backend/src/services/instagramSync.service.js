@@ -1,6 +1,7 @@
 const axios = require("axios");
 const { randomUUID } = require("crypto");
 const supabase = require("../lib/supabase");
+const { needsReconnect, recordInvalidToken } = require("../lib/instagramConnectionHealth");
 
 const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v19.0";
 const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
@@ -42,6 +43,7 @@ async function graphGet(path, accessToken, params = {}) {
 
     return response.data;
   } catch (error) {
+    await recordInvalidToken(supabase, error, accessToken);
     throw new Error(
       metaError(error, `Meta request failed for ${path}`)
     );
@@ -56,6 +58,7 @@ async function instagramGraphGet(path, accessToken, params = {}) {
     });
     return response.data;
   } catch (error) {
+    await recordInvalidToken(supabase, error, accessToken);
     throw new Error(metaError(error, `Instagram request failed for ${path}`));
   }
 }
@@ -834,6 +837,7 @@ async function getDashboard(userEmail) {
 
   return {
     connected: true,
+    reconnectRequired: needsReconnect(account),
     account,
     media,
     comments,

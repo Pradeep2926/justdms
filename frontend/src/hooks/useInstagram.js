@@ -82,6 +82,7 @@ export function useInstagram(email) {
       setDashboard(data);
       cacheDashboard(email, data);
     } catch (err) {
+      await fetchDashboard();
       setError(err.response?.data?.error || err.message || "Failed to sync Instagram");
     } finally {
       setSyncing(false);
@@ -108,7 +109,7 @@ export function useInstagram(email) {
         setDashboard(data);
         cacheDashboard(email, data);
       } catch (err) {
-        console.warn("Background Instagram refresh failed", err);
+        if (active) await fetchDashboard();
       }
     };
 
@@ -126,6 +127,7 @@ export function useInstagram(email) {
     media: dashboard?.media || [],
     comments: dashboard?.comments || [],
     connected: Boolean(dashboard?.connected),
+    reconnectRequired: Boolean(dashboard?.reconnectRequired),
     loading,
     syncing,
     error,

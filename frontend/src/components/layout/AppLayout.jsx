@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
 import Sidebar from "./Sidebar";
+import { useAuth } from "../../hooks/useAuth";
+import { useInstagram } from "../../hooks/useInstagram";
+import { Link } from "react-router-dom";
 
 export default function AppLayout({ children, title, subtitle, action, compactHeader = false }) {
+  const { user } = useAuth();
+  const { reconnectRequired } = useInstagram(user?.email);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -47,7 +52,13 @@ export default function AppLayout({ children, title, subtitle, action, compactHe
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">{children}</main>
+        <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8">
+          {reconnectRequired && <div role="alert" className="mb-5 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-semibold">Reconnect Instagram</p><p className="mt-1 text-sm">Your Instagram connection has expired or needs renewal. Your automations are saved. Reconnect to resume sending DMs and load new reels.</p></div>
+            <Link to="/connect-meta?switch=1" className="btn-primary shrink-0">Reconnect Instagram</Link>
+          </div>}
+          {children}
+        </main>
       </div>
     </div>
   );

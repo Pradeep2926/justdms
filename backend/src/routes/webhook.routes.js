@@ -1,6 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 const supabase = require("../lib/supabase");
+const { recordInvalidToken } = require("../lib/instagramConnectionHealth");
 const {
   parseAutomationPostback,
   withMessagingSender,
@@ -89,6 +90,7 @@ async function metaPost(path, account, body, label, accessTokenOverride = null) 
         timeout: 15000,
       });
     } catch (error) {
+      await recordInvalidToken(supabase, error, accessToken, account.id);
       lastError = error;
       const status = error.response?.status;
       const temporary = !status || status >= 500 || status === 429;
@@ -115,6 +117,7 @@ async function metaGet(path, account, params = {}, label = "Meta GET") {
       timeout: 15000,
     });
   } catch (error) {
+    await recordInvalidToken(supabase, error, accessToken, account.id);
     console.error(
       `Meta API error during ${label}:`,
       error.response?.data || error.message

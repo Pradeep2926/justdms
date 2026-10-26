@@ -20,7 +20,7 @@ export default function ConnectMeta() {
 
     api.get(`/instagram/dashboard/${encodeURIComponent(user.email)}`)
       .then(({ data }) => {
-        if (data?.connected) navigate("/dashboard", { replace: true });
+        if (data?.connected && !data?.reconnectRequired) navigate("/dashboard", { replace: true });
       })
       .catch(() => {
         // A missing connection is the expected state for first-time users.

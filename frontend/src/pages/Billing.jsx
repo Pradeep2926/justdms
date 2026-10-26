@@ -49,7 +49,8 @@ function loadRazorpay() {
   });
 }
 
-export default function Billing() {
+export default function Billing({ embedded = false }) {
+  const Layout = embedded ? EmbeddedBilling : AppLayout;
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [subscription, setSubscription] = useState(null);
@@ -167,7 +168,7 @@ export default function Billing() {
     : null;
 
   return (
-    <AppLayout title="Billing" subtitle="Manage your JustDMs Pro subscription">
+    <Layout title="Billing" subtitle="Manage your JustDMs Pro subscription">
       <div className="mx-auto max-w-5xl space-y-6">
         {active && (
           <section className="flex flex-col gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -323,7 +324,7 @@ export default function Billing() {
           Prices include access to all currently listed Pro features. Instagram functionality depends on Meta platform availability and policies.
         </p>
       </div>
-    </AppLayout>
+    </Layout>
   );
 }
 
@@ -335,3 +336,5 @@ function Benefit({ icon: Icon, label }) {
     </div>
   );
 }
+
+function EmbeddedBilling({ children }) { return <div>{children}</div>; }
