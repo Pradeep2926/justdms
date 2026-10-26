@@ -1,3 +1,4 @@
+import { showMessage, confirmAction } from "../components/common/AppDialog";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
 import AppLayout from "../components/layout/AppLayout";
@@ -87,7 +88,7 @@ export default function Automation() {
   };
 
   const handleDelete = async (automation) => {
-    if (!window.confirm("Delete this automation? This cannot be undone.")) {
+    if (!await confirmAction("Delete this automation? This cannot be undone.")) {
       return;
     }
 
@@ -95,7 +96,7 @@ export default function Automation() {
       await api.delete(`/automation/${automation.id}`);
       await refreshAutomations();
     } catch (err) {
-      alert(err.response?.data?.error || err.message || "Failed to delete automation");
+      showMessage(err.response?.data?.error || err.message || "Failed to delete automation");
     }
   };
 
@@ -106,7 +107,7 @@ export default function Automation() {
       });
       await refreshAutomations();
     } catch (err) {
-      alert(err.response?.data?.error || err.message || "Failed to update automation");
+      showMessage(err.response?.data?.error || err.message || "Failed to update automation");
     }
   };
 

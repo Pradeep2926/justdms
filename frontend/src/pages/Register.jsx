@@ -1,3 +1,4 @@
+import { showMessage } from "../components/common/AppDialog";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
@@ -59,7 +60,7 @@ export default function Register() {
     });
 
     if (error) {
-      alert(error.message);
+      showMessage(error.message);
       setLoading(false);
       return;
     }
@@ -87,7 +88,7 @@ export default function Register() {
         setLoading(false);
         return;
       }
-      alert(`Profile creation failed: ${profileError.message}`);
+      showMessage(`Profile creation failed: ${profileError.message}`);
       setLoading(false);
       return;
     }
@@ -112,7 +113,7 @@ export default function Register() {
     });
 
     if (error) {
-      alert(error.message);
+      showMessage(error.message);
       setGoogleLoading(false);
     }
   }

@@ -1,3 +1,4 @@
+import { confirmAction } from "../components/common/AppDialog";
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
@@ -137,7 +138,7 @@ export default function Billing({ embedded = false }) {
   };
 
   const cancelSubscription = async () => {
-    if (!window.confirm("Cancel renewal at the end of the current billing period?")) {
+    if (!await confirmAction("Cancel renewal at the end of the current billing period?")) {
       return;
     }
 

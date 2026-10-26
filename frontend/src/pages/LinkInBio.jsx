@@ -1,3 +1,4 @@
+import { confirmAction } from "../components/common/AppDialog";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Check, CheckCircle2, Copy, Eye, EyeOff, GripVertical, ImagePlus, Link2, LoaderCircle, Palette, Pencil, Plus, QrCode, Save, Smartphone, Trash2, UserRound, X, XCircle } from "lucide-react";
 import AppLayout from "../components/layout/AppLayout";
@@ -134,7 +135,7 @@ export default function LinkInBio() {
     catch (error) { notify(error.response?.data?.error || "Unable to update link.", "error"); }
   };
   const deleteLink = async (link) => {
-    if (!window.confirm(`Delete “${link.title}”?`)) return;
+    if (!await confirmAction(`Delete “${link.title}”?`)) return;
     try { await api.delete(`/bio/links/${link.id}`); setLinks((items) => items.filter((item) => item.id !== link.id).map((item, position) => ({ ...item, position }))); notify("Link deleted."); }
     catch (error) { notify(error.response?.data?.error || "Unable to delete link.", "error"); }
   };

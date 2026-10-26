@@ -1,3 +1,4 @@
+import { showMessage } from "../components/common/AppDialog";
 import { BadgeCheck, CheckCircle2, Instagram } from "lucide-react";
 import AuthLayout from "../components/layout/AuthLayout";
 import { useEffect } from "react";
@@ -29,12 +30,12 @@ export default function ConnectMeta() {
 
   const connectInstagram = async () => {
     if (!user) {
-      alert("User not logged in");
+      showMessage("User not logged in");
       return;
     }
 
     if (!user.email) {
-      alert("User email not found");
+      showMessage("User email not found");
       return;
     }
 

@@ -1,3 +1,4 @@
+import { showMessage } from "../components/common/AppDialog";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
@@ -23,7 +24,7 @@ export default function Login() {
       if (error.message?.toLowerCase().includes("email not confirmed")) {
         navigate(`/verify?email=${encodeURIComponent(email.trim().toLowerCase())}`);
       } else {
-        alert(error.message);
+        showMessage(error.message);
       }
       setLoading(false);
       return;
@@ -65,7 +66,7 @@ export default function Login() {
     });
 
     if (error) {
-      alert(error.message);
+      showMessage(error.message);
     }
   }
 
