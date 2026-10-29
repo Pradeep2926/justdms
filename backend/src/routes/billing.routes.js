@@ -8,20 +8,7 @@ const { qualifyReferralForSubscription } = require("../lib/referral");
 
 const router = express.Router();
 const RAZORPAY_API = "https://api.razorpay.com/v1";
-const PLANS = {
-  monthly: {
-    amount: 19900,
-    label: "JustDMs Pro Monthly",
-    totalCount: 120,
-    planId: () => process.env.RAZORPAY_MONTHLY_PLAN_ID,
-  },
-  yearly: {
-    amount: 199900,
-    label: "JustDMs Pro Yearly",
-    totalCount: 10,
-    planId: () => process.env.RAZORPAY_YEARLY_PLAN_ID,
-  },
-};
+const { billingPlan, planMatches } = require("../lib/billingPlans");
 
 function razorpayAuth() {
   return {
@@ -30,13 +17,9 @@ function razorpayAuth() {
   };
 }
 
-function checkoutConfigured() {
-  return Boolean(
-    process.env.RAZORPAY_KEY_ID &&
-      process.env.RAZORPAY_KEY_SECRET &&
-      process.env.RAZORPAY_MONTHLY_PLAN_ID &&
-      process.env.RAZORPAY_YEARLY_PLAN_ID
-  );
+function checkoutConfigured(currency = "INR") {
+  return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
+    && billingPlan(currency, "monthly")?.planId && billingPlan(currency, "yearly")?.planId);
 }
 
 function safeEqual(left, right) {
@@ -177,6 +160,7 @@ router.get("/subscription", requireUser, async (req, res) => {
         billing_cycle: null,
       },
       checkoutConfigured: checkoutConfigured(),
+      checkoutCurrencies: { INR: checkoutConfigured("INR"), USD: checkoutConfigured("USD") },
     });
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -186,11 +170,12 @@ router.get("/subscription", requireUser, async (req, res) => {
 router.post("/subscription", requireUser, async (req, res) => {
   try {
     const billingCycle = req.body.billingCycle;
-    const plan = PLANS[billingCycle];
+    const currency = req.body.currency === undefined ? "INR" : req.body.currency;
+    const plan = billingPlan(currency, billingCycle);
     if (!plan) {
-      return res.status(400).json({ error: "Choose monthly or yearly billing." });
+      return res.status(400).json({ error: "Choose INR or USD and monthly or yearly billing." });
     }
-    if (!checkoutConfigured()) {
+    if (!checkoutConfigured(currency)) {
       return res.status(503).json({
         error: "Checkout is not configured yet. Add the Razorpay subscription credentials to the backend.",
       });
@@ -206,10 +191,13 @@ router.post("/subscription", requireUser, async (req, res) => {
       });
     }
 
+    // A wrong environment plan ID must never result in the wrong charge.
+    const { data: remotePlan } = await axios.get(`${RAZORPAY_API}/plans/${plan.planId}`, { auth: razorpayAuth(), timeout: 15000 });
+    if (!planMatches(remotePlan, plan)) return res.status(503).json({ error: "The selected payment plan is not configured correctly. Please contact support." });
     const { data: razorpaySubscription } = await axios.post(
       `${RAZORPAY_API}/subscriptions`,
       {
-        plan_id: plan.planId(),
+        plan_id: plan.planId,
         total_count: plan.totalCount,
         quantity: 1,
         customer_notify: 1,
@@ -230,9 +218,9 @@ router.post("/subscription", requireUser, async (req, res) => {
       plan: "pro",
       billing_cycle: billingCycle,
       amount_paise: plan.amount,
-      currency: "INR",
+      currency: plan.currency,
       status: razorpaySubscription.status || "created",
-      razorpay_plan_id: plan.planId(),
+      razorpay_plan_id: plan.planId,
       razorpay_subscription_id: razorpaySubscription.id,
       updated_at: new Date().toISOString(),
     };
@@ -245,7 +233,7 @@ router.post("/subscription", requireUser, async (req, res) => {
       keyId: process.env.RAZORPAY_KEY_ID,
       subscriptionId: razorpaySubscription.id,
       amount: plan.amount,
-      currency: "INR",
+      currency: plan.currency,
       planLabel: plan.label,
       billingCycle,
     });

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   MessageCircle,
@@ -64,6 +65,10 @@ const STEPS = [
 ];
 
 export default function Home() {
+  const [currency, setCurrency] = useState("INR");
+  const [billingCycle, setBillingCycle] = useState("monthly");
+  const yearly = billingCycle === "yearly";
+  const proPrice = currency === "INR" ? (yearly ? "₹1,999" : "₹199") : (yearly ? "$49" : "$4.99");
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
@@ -139,88 +144,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="scroll-mt-20 border-y border-slate-100 bg-slate-50 px-6 py-24">
-        <div className="mx-auto max-w-5xl">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">
-              Simple pricing
-            </p>
-            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Start free. Upgrade when you grow.</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-slate-600">
-              Launch your first automations at no cost, then unlock unlimited workflows with Pro.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-12 grid max-w-5xl gap-6 md:grid-cols-3">
-            {[
-              {
-                name: "Free",
-                price: "₹0",
-                period: "/forever",
-                note: "No card required",
-                features: [
-                  "2 active DM automations",
-                  "Comment and keyword triggers",
-                  "Ask for a follow before delivery",
-                  "Link in Bio",
-                  "Appointment booking",
-                ],
-              },
-              { name: "Monthly", price: "₹199", period: "/month", note: "Flexible monthly billing" },
-              { name: "Yearly", price: "₹1,999", period: "/year", note: "Save ₹389 every year", featured: true },
-            ].map((plan) => (
-              <div key={plan.name} className={`relative flex flex-col rounded-lg border bg-white p-7 shadow-card ${plan.featured ? "border-violet-300 ring-2 ring-violet-100" : "border-brand-200"}`}>
-                {plan.featured && (
-                  <span className="absolute right-5 top-5 rounded-full bg-violet-50 px-3 py-1 text-xs font-bold uppercase text-violet-700">
-                    Best value
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-2 text-sm font-bold uppercase text-brand-700">
-                  {plan.name === "Free" ? <Sparkles className="h-4 w-4" /> : <Crown className="h-4 w-4" />}
-                  {plan.name === "Free" ? "JustDMs Free" : `JustDMs Pro · ${plan.name}`}
-                </span>
-                <p className="mt-5 text-4xl font-extrabold text-slate-950">
-                  {plan.price}<span className="text-sm font-medium text-slate-500">{plan.period}</span>
-                </p>
-                <p className="mt-2 text-sm font-semibold text-emerald-700">{plan.note}</p>
-                <div className="mt-6 space-y-3">
-                  {(plan.features || ["Unlimited automations", "Unlimited DMs*", "Follow-gate flows", "Link in Bio and booking", "Analytics, lead collection, and AI Replies"]).map((feature) => (
-                    <span key={feature} className="flex items-start gap-2 text-sm text-slate-700">
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                      {feature}
-                    </span>
-                  ))}
-                </div>
-                <Link to="/register" className="btn-primary mt-8 w-full py-3.5">
-                  {plan.name === "Free" ? "Start Free" : `Choose ${plan.name}`} <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            ))}
-          </div>
-          <p className="mt-5 text-center text-xs leading-5 text-slate-500">
-            *Unlimited DMs are subject to Instagram/Meta API limits and fair usage. Prices include applicable taxes only where stated at checkout.
-          </p>
-        </div>
-      </section>
-
-      {/* Stats bar */}
-      <section className="py-12 bg-slate-900 text-white">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { value: "30M+", label: "DMs Sent" },
-            { value: "5M+", label: "Followers Gained" },
-            { value: "10M+", label: "Comments Replied" },
-            { value: "12+", label: "Countries" },
-          ].map(({ value, label }) => (
-            <div key={label}>
-              <p className="text-3xl font-bold">{value}</p>
-              <p className="text-sm text-slate-400 mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Features */}
       <section id="features" className="scroll-mt-20 py-24 px-6">
         <div className="max-w-5xl mx-auto">
@@ -252,6 +175,23 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Stats bar */}
+      <section className="py-12 bg-slate-900 text-white">
+        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {[
+            { value: "30M+", label: "DMs Sent" },
+            { value: "5M+", label: "Followers Gained" },
+            { value: "10M+", label: "Comments Replied" },
+            { value: "12+", label: "Countries" },
+          ].map(({ value, label }) => (
+            <div key={label}>
+              <p className="text-3xl font-bold">{value}</p>
+              <p className="text-sm text-slate-400 mt-1">{label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* How it works */}
       <section id="how-it-works" className="scroll-mt-20 py-24 px-6 bg-slate-50">
         <div className="max-w-5xl mx-auto">
@@ -275,6 +215,57 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section id="pricing" className="pricing-section scroll-mt-20 border-y border-slate-100 px-4 py-16 sm:px-6 sm:py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="text-center">
+            <p className="inline-flex rounded-full border border-brand-100 bg-white px-4 py-1.5 text-xs font-bold uppercase tracking-[0.15em] text-brand-600">
+              Simple pricing
+            </p>
+            <h2 className="mx-auto mt-5 max-w-2xl text-3xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-5xl">Your next chapter.<br /><span className="text-brand-600">At your own pace.</span></h2>
+            <p className="mx-auto mt-4 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
+              Launch your first automations at no cost, then unlock unlimited workflows with Pro.
+            </p>
+          </div>
+
+          <div className="mt-8 flex justify-center" role="group" aria-label="Pricing currency">
+            <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm">
+              {["INR", "USD"].map(value => <button key={value} type="button" aria-pressed={currency === value} onClick={() => setCurrency(value)} className={`min-h-10 rounded-full px-6 text-sm font-semibold transition ${currency === value ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>{value === "INR" ? "₹ INR" : "$ USD"}</button>)}
+            </div>
+          </div>
+          <div className="mx-auto mt-10 grid max-w-4xl items-stretch gap-5 md:grid-cols-2 sm:gap-6">
+            <div className="pricing-card flex min-w-0 flex-col rounded-3xl border border-slate-200 bg-white p-6 sm:p-8">
+              <span className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-600"><Sparkles className="h-4 w-4" />JustDMs Free</span>
+              <p className="mt-3 text-sm leading-6 text-slate-500 md:min-h-[60px]">A little help for your next big idea.<br />Your first automations are on us.</p>
+              <p className="mt-6 text-5xl font-extrabold tracking-tight text-slate-950">{currency === "INR" ? "₹0" : "$0"}<span className="text-sm font-medium tracking-normal text-slate-500"> /forever</span></p>
+              <p className="mt-3 text-sm text-slate-500">Start creating. No card required.</p>
+              <div className="my-7 h-px bg-slate-100" />
+              <div className="flex-1 space-y-4">
+                {["2 active DM automations", "Limited DMs", "Comment and keyword triggers", "Ask for a follow before delivery", "Link in Bio", "Appointment booking", "WhatsApp quick support"].map(feature => <span key={feature} className="flex items-start gap-3 text-sm leading-6 text-slate-600"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-500" />{feature}</span>)}
+              </div>
+              <Link to="/register" className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-800 transition hover:border-brand-300 hover:bg-brand-50">Start for free <ArrowRight className="h-4 w-4" /></Link>
+            </div>
+            <div className="pricing-card pricing-pro relative flex min-w-0 flex-col rounded-3xl border border-brand-200 bg-white p-6 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3"><span className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-brand-700"><Crown className="h-4 w-4" />JustDMs Pro</span><span className="rounded-full bg-brand-600 px-3 py-1 text-xs font-semibold text-white">For your next stage</span></div>
+              <div className="mt-5 inline-flex w-full self-start rounded-xl border border-slate-200/70 bg-white/80 p-1" role="group" aria-label="Pro billing period">
+                {["monthly", "yearly"].map(value => <button key={value} type="button" aria-pressed={billingCycle === value} onClick={() => setBillingCycle(value)} className={`min-h-11 flex-1 rounded-lg px-4 text-sm font-semibold capitalize transition ${billingCycle === value ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>{value}</button>)}
+              </div>
+              <p className="mt-5 text-5xl font-extrabold tracking-tight text-slate-950" aria-live="polite">{proPrice}<span className="text-sm font-medium tracking-normal text-slate-500"> /{yearly ? "year" : "month"}</span></p>
+              <p className="mt-3 text-sm font-medium text-brand-700">{yearly ? (currency === "INR" ? "Save ₹389 with annual billing" : "Save $10.88 with annual billing") : "Flexible monthly billing"}</p>
+              <div className="my-7 h-px bg-slate-100" />
+              <div className="flex-1 space-y-4">
+                {["Unlimited automations", "Unlimited DMs*", "Comment and keyword triggers", "Ask for a follow before delivery", "Link in Bio and appointment booking", "Analytics and lead collection", "WhatsApp quick support"].map(feature => <span key={feature} className="flex items-start gap-3 text-sm leading-6 text-slate-600"><CheckCircle2 className="h-5 w-5 shrink-0 text-brand-500" />{feature}</span>)}
+              </div>
+              <Link to="/register" className="btn-primary mt-8 min-h-12 w-full rounded-xl py-3 shadow-lg shadow-brand-500/15">Get started with Pro <ArrowRight className="h-4 w-4" /></Link>
+              {currency === "USD" && <p className="mt-3 text-center text-xs text-slate-500">Billed in US dollars. Choose USD in Billing when you upgrade.</p>}
+            </div>
+          </div>
+          <p className="mx-auto mt-7 max-w-xl text-center text-xs leading-5 text-slate-400">
+            *Unlimited DMs are subject to Instagram/Meta API limits and fair usage. Prices include applicable taxes only where stated at checkout.
+          </p>
         </div>
       </section>
 

@@ -53,6 +53,8 @@ function loadRazorpay() {
 export default function Billing({ embedded = false }) {
   const Layout = embedded ? EmbeddedBilling : AppLayout;
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
+  const [currency, setCurrency] = useState("INR");
+  const [checkoutCurrencies, setCheckoutCurrencies] = useState({ INR: false, USD: false });
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [subscription, setSubscription] = useState(null);
   const [checkoutConfigured, setCheckoutConfigured] = useState(true);
@@ -60,13 +62,9 @@ export default function Billing({ embedded = false }) {
   const [checkingOut, setCheckingOut] = useState(false);
   const [message, setMessage] = useState("");
 
-  const plan = useMemo(
-    () =>
-      billingCycle === "yearly"
-        ? { amount: "₹1,999", suffix: "/year", monthly: "₹167/month", savings: "Save ₹389" }
-        : { amount: "₹199", suffix: "/month", monthly: null, savings: null },
-    [billingCycle]
-  );
+  const plan = useMemo(() => currency === "USD"
+    ? billingCycle === "yearly" ? { amount: "$49", suffix: "/year", monthly: "$4.08/month", savings: "Save $10.88" } : { amount: "$4.99", suffix: "/month" }
+    : billingCycle === "yearly" ? { amount: "₹1,999", suffix: "/year", monthly: "₹167/month", savings: "Save ₹389" } : { amount: "₹199", suffix: "/month" }, [currency, billingCycle]);
 
   const loadSubscription = async () => {
     if (!user?.email) return;
@@ -75,6 +73,8 @@ export default function Billing({ embedded = false }) {
       const { data } = await api.get("/billing/subscription", { headers });
       setSubscription(data.subscription);
       setCheckoutConfigured(data.checkoutConfigured);
+      setCheckoutCurrencies(data.checkoutCurrencies || { INR: data.checkoutConfigured, USD: false });
+      if (data.subscription?.currency) setCurrency(data.subscription.currency);
     } catch (error) {
       setMessage(error.response?.data?.error || "Unable to load billing details.");
     } finally {
@@ -98,7 +98,7 @@ export default function Billing({ embedded = false }) {
       const headers = await billingHeaders(user);
       const { data: order } = await api.post(
         "/billing/subscription",
-        { billingCycle },
+        { billingCycle, currency },
         { headers }
       );
 
@@ -181,6 +181,7 @@ export default function Billing({ embedded = false }) {
                 <p className="font-bold text-emerald-950">JustDMs Pro is active</p>
                 <p className="text-sm text-emerald-800">
                   {referralActive && !paidActive ? "Referral reward" : subscription.billing_cycle === "yearly" ? "Yearly billing" : "Monthly billing"}
+                  {paidActive ? ` · ${subscription.currency || "INR"}` : ""}
                   {renewalDate ? ` · Access through ${renewalDate}` : ""}
                 </p>
               </div>
@@ -191,6 +192,7 @@ export default function Billing({ embedded = false }) {
           </section>
         )}
 
+        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-600">Choose your billing currency</p><div role="group" aria-label="Billing currency" className="inline-flex rounded-xl border border-slate-200 bg-white p-1">{["INR", "USD"].map(value => <button key={value} type="button" disabled={checkingOut || paidActive} aria-pressed={currency === value} onClick={() => setCurrency(value)} className={`min-h-11 rounded-lg px-5 text-sm font-semibold disabled:cursor-not-allowed ${currency === value ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{value === "INR" ? "₹ INR" : "$ USD"}</button>)}</div></div>
         <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
             <div className="border-b border-slate-100 bg-slate-950 p-6 text-white sm:p-8 lg:border-b-0 lg:border-r">
@@ -246,7 +248,7 @@ export default function Billing({ embedded = false }) {
               <button
                 type="button"
                 onClick={startCheckout}
-                disabled={authLoading || loading || checkingOut || active || !checkoutConfigured}
+                disabled={authLoading || loading || checkingOut || active || !(currency === "INR" ? checkoutConfigured : checkoutCurrencies.USD)}
                 className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 px-5 font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-55"
               >
                 <CreditCard className="h-5 w-5" />
@@ -256,9 +258,9 @@ export default function Billing({ embedded = false }) {
                     ? "Opening checkout..."
                     : `Choose ${billingCycle}`}
               </button>
-              {!checkoutConfigured && !loading && (
+              {!(currency === "INR" ? checkoutConfigured : checkoutCurrencies.USD) && !loading && (
                 <p className="mt-3 text-center text-xs text-amber-300">
-                  Checkout will be available after payment setup is completed.
+                  {currency} checkout will be available after payment setup is completed.
                 </p>
               )}
             </div>

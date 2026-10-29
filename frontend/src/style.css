@@ -113,3 +113,10 @@
     align-items: center;
   }
 }
+
+.pricing-section { background: radial-gradient(ellipse at 50% 0%, #eef1ff 0%, #f8fafc 55%, #f8fafc 100%); }
+.pricing-card { box-shadow: 0 4px 6px -4px #0f172a08, 0 16px 48px -28px #0f172a25; transition: box-shadow .2s ease, border-color .2s ease; }
+.pricing-pro { background: linear-gradient(155deg, #f5f6ff 0%, #ffffff 60%); box-shadow: 0 8px 40px -16px #6366f130; }
+.pricing-section button:focus-visible, .pricing-section a:focus-visible { outline: 3px solid #818cf8; outline-offset: 4px; }
+@media (hover: hover) { .pricing-card:hover { border-color: #a5b4fc; box-shadow: 0 18px 50px -24px #6366f140; } }
+@media (prefers-reduced-motion: reduce) { .pricing-card { transition: none; } }
