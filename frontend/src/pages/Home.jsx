@@ -122,10 +122,10 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <a href="#pricing" className="btn-primary text-base px-8 py-4">
-              View Plans
+            <Link to="/register" className="btn-primary text-base px-8 py-4">
+              Start for free
               <ArrowRight className="w-5 h-5" />
-            </a>
+            </Link>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6 text-sm text-slate-500">
