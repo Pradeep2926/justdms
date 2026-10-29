@@ -67,11 +67,11 @@ export default function Home() {
   const yearly = billingCycle === "yearly";
   const proPrice = currency === "INR" ? (yearly ? "₹1,999" : "₹199") : (yearly ? "$49" : "$4.99");
   return (
-    <div className="landing-page min-h-screen bg-white">
+    <div className="landing-page min-h-screen overflow-x-clip bg-white">
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <Link to="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             <img
               src={logoUrl}
               alt="JustDMs"
@@ -93,11 +93,11 @@ export default function Home() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/login"
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2"
+              className="text-sm font-medium text-slate-600 hover:text-slate-900 px-2 sm:px-4 py-2"
             >
               Login
             </Link>
-            <Link to="/register" className="btn-primary text-sm py-2.5">
+            <Link to="/register" className="btn-primary shrink-0 whitespace-nowrap text-sm px-3 sm:px-5 py-2.5">
               Get Started
             </Link>
           </div>

@@ -1,4 +1,4 @@
-import { BadgeCheck } from "lucide-react";
+import metaLogo from "../assets/meta-logo.png";
 import { GoogleMark, PasswordField } from "../components/auth/AuthControls";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -208,7 +208,7 @@ export default function Register() {
 
         <PasswordField signup value={password} onChange={(e) => setPassword(e.target.value)} />
 
-        <div className="flex gap-2.5 rounded-xl border border-brand-100 bg-gradient-to-r from-cyan-50/50 to-violet-50/50 p-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" /><div><p className="text-xs font-semibold text-slate-800">Official Instagram integration</p><p className="mt-1 text-[11px] leading-[17px] text-slate-500">We use official Instagram APIs and authorization. Your Instagram password stays with Instagram, and you control access.</p></div></div>
+        <div className="flex gap-2.5 rounded-xl border border-brand-100 bg-gradient-to-r from-cyan-50/50 to-violet-50/50 p-3"><img src={metaLogo} alt="Meta" width="100" height="100" className="mt-0.5 h-7 w-9 shrink-0 object-contain" /><div><p className="text-xs font-semibold text-slate-800">Official Instagram integration</p><p className="mt-1 text-[11px] leading-[17px] text-slate-500">We use official Instagram APIs and authorization. Your Instagram password stays with Instagram, and you control access.</p></div></div>
 
         <p className="text-center text-xs leading-5 text-slate-400">
           By joining, you agree to our{" "}
