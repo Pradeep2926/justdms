@@ -1,13 +1,15 @@
-import { showMessage } from "../components/common/AppDialog";
+import { BadgeCheck } from "lucide-react";
+import { GoogleMark, PasswordField } from "../components/auth/AuthControls";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/layout/AuthLayout";
-import { BadgeCheck } from "lucide-react";
+
 
 export default function Register() {
   const navigate = useNavigate();
 
+  const [formError, setFormError] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,7 +38,9 @@ export default function Register() {
   }
 
   async function handleRegister(e) {
+    try {
     e.preventDefault();
+    setFormError("");
     setLoading(true);
 
     const profile = {
@@ -60,7 +64,7 @@ export default function Register() {
     });
 
     if (error) {
-      showMessage(error.message);
+      setFormError(error.message);
       setLoading(false);
       return;
     }
@@ -88,7 +92,7 @@ export default function Register() {
         setLoading(false);
         return;
       }
-      showMessage(`Profile creation failed: ${profileError.message}`);
+      setFormError(`Profile creation failed: ${profileError.message}`);
       setLoading(false);
       return;
     }
@@ -96,9 +100,16 @@ export default function Register() {
     localStorage.removeItem("pendingProfile");
     setLoading(false);
     navigate("/dashboard");
+    } catch (error) {
+      setFormError(error.message || "Unable to connect. Please try again.");
+      setLoading(false);
+      setGoogleLoading(false);
+    }
   }
 
   async function handleGoogleSignup() {
+    try {
+    setFormError("");
     setGoogleLoading(true);
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -113,25 +124,34 @@ export default function Register() {
     });
 
     if (error) {
-      showMessage(error.message);
+      setFormError(error.message);
+      setGoogleLoading(false);
+    }
+    } catch (error) {
+      setFormError(error.message || "Unable to connect. Please try again.");
+      setLoading(false);
       setGoogleLoading(false);
     }
   }
 
   return (
-    <AuthLayout title="Create your account" hideHeader>
-      <form onSubmit={handleRegister} className="space-y-5">
+    <AuthLayout compact title="Create your account" subtitle="Free automation. No credit card required.">
+      <form onSubmit={handleRegister} className="space-y-3">
+        {formError && <p role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm leading-6 text-red-700">{formError}</p>}
+        <div>
         <button
           type="button"
           onClick={handleGoogleSignup}
-          disabled={googleLoading}
-          className="w-full min-h-[56px] rounded-2xl border border-slate-200 bg-white px-5 text-lg font-semibold text-slate-700 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={googleLoading || loading}
+          className="w-full min-h-12 rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-70"
         >
           <span className="inline-flex items-center justify-center gap-4">
-            <span className="text-xl font-bold text-blue-500">G</span>
-            {googleLoading ? "Opening Google..." : "Sign up with Google"}
+            <GoogleMark />
+            {googleLoading ? "Opening Google..." : "Continue with Google"}
           </span>
         </button>
+          <p className="mt-2 text-center text-[11px] text-slate-500">Quick sign-up · No new password needed</p>
+        </div>
 
         <div className="flex items-center gap-4">
           <div className="h-px flex-1 bg-slate-200" />
@@ -139,21 +159,27 @@ export default function Register() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <div>
+            <label htmlFor="firstName" className="mb-1.5 block text-sm font-semibold text-slate-700">First name</label>
             <input
+              id="firstName"
+              autoComplete="given-name"
               required
-              placeholder="First Name"
-              className="input min-h-[52px] rounded-xl bg-slate-50 text-base font-medium"
+              placeholder="First name"
+              className="input min-h-12 rounded-xl bg-white text-base font-medium"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
           </div>
           <div>
+            <label htmlFor="lastName" className="mb-1.5 block text-sm font-semibold text-slate-700">Last name</label>
             <input
+              id="lastName"
+              autoComplete="family-name"
               required
-              placeholder="Last Name"
-              className="input min-h-[52px] rounded-xl bg-slate-50 text-base font-medium"
+              placeholder="Last name"
+              className="input min-h-12 rounded-xl bg-white text-base font-medium"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
@@ -161,64 +187,44 @@ export default function Register() {
         </div>
 
         <div>
+          <label htmlFor="signup-email" className="mb-1.5 block text-sm font-semibold text-slate-700">Email address</label>
           <input
+            id="signup-email"
+            autoComplete="email"
             required
             type="email"
             placeholder="Email"
-            className="input min-h-[56px] rounded-xl bg-blue-50/80 text-base font-medium"
+            className="input min-h-12 rounded-xl bg-white text-base font-medium"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           {email.trim() && (
-            <p className="mt-2 px-2 text-sm font-medium text-slate-500">
+            <p className="mt-1 text-xs text-slate-500">
               Verification link will be sent to{" "}
               <span className="text-brand-600">{email.trim().toLowerCase()}</span>
             </p>
           )}
         </div>
 
-        <div>
-          <input
-            required
-            type="password"
-            minLength={6}
-            placeholder="Password"
-            className="input min-h-[56px] rounded-xl bg-slate-50 text-base font-medium"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
+        <PasswordField signup value={password} onChange={(e) => setPassword(e.target.value)} />
 
-        <div className="flex items-center gap-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-500">
-            <BadgeCheck className="h-7 w-7" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-blue-600">Meta-verified partner</p>
-            <p className="text-sm font-medium leading-5 text-slate-500">
-              We only use official Instagram APIs and processes. Your Instagram
-              account is secure, and you stay in full control.
-            </p>
-          </div>
-        </div>
+        <div className="flex gap-2.5 rounded-xl border border-brand-100 bg-gradient-to-r from-cyan-50/50 to-violet-50/50 p-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" /><div><p className="text-xs font-semibold text-slate-800">Official Instagram integration</p><p className="mt-1 text-[11px] leading-[17px] text-slate-500">We use official Instagram APIs and authorization. Your Instagram password stays with Instagram, and you control access.</p></div></div>
 
-        <p className="text-center text-sm font-medium text-slate-400">
-          By joining you agree to our{" "}
-          <Link to="/privacy" className="text-brand-600 hover:underline">
-            Terms & Privacy Policy
-          </Link>
+        <p className="text-center text-xs leading-5 text-slate-400">
+          By joining, you agree to our{" "}
+          <Link to="/terms" className="text-brand-600 hover:underline">Terms</Link> and <Link to="/privacy" className="text-brand-600 hover:underline">Privacy Policy</Link>.
         </p>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full min-h-[56px] rounded-xl bg-brand-600 px-5 text-lg font-bold text-white shadow-lg shadow-brand-600/20 transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={loading || googleLoading}
+          className="w-full min-h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-brand-600 to-violet-600 px-5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {loading ? "Creating Account..." : "Create Account"}
+          {loading ? "Creating Account..." : "Create free account"}
         </button>
       </form>
 
-      <p className="mt-8 text-center text-base font-medium text-slate-500">
+      <p className="mt-4 text-center text-sm text-slate-500">
         Already have an account?{" "}
         <Link to="/login" className="font-bold text-brand-600 hover:underline">
           Sign in

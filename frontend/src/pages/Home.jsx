@@ -14,6 +14,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import logoUrl from "../assets/justdms-logo.png";
+import creatorPortrait from "../assets/auth-creator.jpg";
+import creatorLinks from "../assets/landing-creator-links.jpg";
+import creatorReaction from "../assets/landing-creator-reaction.jpg";
 
 const FEATURES = [
   {
@@ -58,19 +61,13 @@ const FEATURES = [
   },
 ];
 
-const STEPS = [
-  { num: "01", title: "Choose Trigger", desc: "Pick keywords that activate your automation" },
-  { num: "02", title: "Automate Response", desc: "Setup custom responses with links and offers" },
-  { num: "03", title: "Go Viral", desc: "Let automations work while you focus on creating" },
-];
-
 export default function Home() {
   const [currency, setCurrency] = useState("INR");
   const [billingCycle, setBillingCycle] = useState("monthly");
   const yearly = billingCycle === "yearly";
   const proPrice = currency === "INR" ? (yearly ? "₹1,999" : "₹199") : (yearly ? "$49" : "$4.99");
   return (
-    <div className="min-h-screen bg-white">
+    <div className="landing-page min-h-screen bg-white">
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -108,115 +105,39 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-6 hero-gradient">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-50 text-brand-700 rounded-full text-sm font-medium mb-8">
-            <Zap className="w-4 h-4" />
-            Instagram DM Automation for Creators
+      <section className="landing-hero overflow-hidden px-5 pb-14 pt-28 sm:px-8 sm:pt-36 lg:pb-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.05fr_.95fr] lg:gap-14">
+          <div className="text-center lg:text-left">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-brand-600"><Zap className="h-3.5 w-3.5" />Instagram automation, made simple</span>
+            <h1 className="mt-6 text-[44px] font-extrabold leading-[1.05] tracking-[-.045em] text-slate-950 sm:text-6xl xl:text-[72px]">You create.<br /><span className="gradient-text">We keep the<br className="hidden lg:block" /> conversation going.</span></h1>
+            <p className="mx-auto mt-6 max-w-md text-base leading-7 text-slate-500 lg:mx-0">Turn “send me the link” into your next connection. Automate Instagram replies, share resources, and get back to what you love.</p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4 lg:justify-start"><Link to="/register" className="btn-primary min-h-12 rounded-xl px-7 text-sm">Start for free <ArrowRight className="h-4 w-4" /></Link><a href="#how-it-works" className="inline-flex min-h-12 items-center gap-2 px-2 text-sm font-semibold text-slate-600 hover:text-brand-600">See how it works <span aria-hidden="true">↘</span></a></div>
+            <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-slate-500 lg:justify-start">{["Free automation", "No credit card required"].map(text => <span className="inline-flex items-center gap-1.5" key={text}><CheckCircle2 className="h-3.5 w-3.5 text-brand-500" />{text}</span>)}</div>
           </div>
-
-          <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight leading-[1.1]">
-            Go Viral on IG
-            <br />
-            <span className="gradient-text">with DM Automation</span>
-          </h1>
-
-          <p className="text-lg text-slate-600 mt-6 max-w-2xl mx-auto leading-relaxed">
-            Keep your audience and the IG algorithm happy by auto-responding to
-            every comment in a DM. Turn engagement into leads and sales.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10">
-            <Link to="/register" className="btn-primary text-base px-8 py-4">
-              Start for free
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6 text-sm text-slate-500">
-            {["Meta Verified", "Secure Billing", "Instant Setup"].map((t) => (
-              <span key={t} className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                {t}
-              </span>
-            ))}
+          <div className="landing-portrait relative mx-auto w-full max-w-[460px]">
+            <div className="relative aspect-[4/4.7] overflow-hidden rounded-[32px] border border-white bg-violet-50"><img src={creatorPortrait} alt="Creator smiling while checking her phone" fetchPriority="high" width="1122" height="1402" className="h-full w-full object-cover" /><div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-3 py-2 text-[11px] font-semibold text-slate-600 backdrop-blur"><span className="h-1.5 w-1.5 rounded-full bg-brand-500" />A little less busy. A lot more you.</div></div>
+            <MessagePreview className="absolute -bottom-5 left-3 right-3 sm:-left-5 sm:right-8" keyword="LINK" message="Here’s the resource you asked for ✨" />
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="scroll-mt-20 py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-brand-600 font-semibold text-sm uppercase tracking-wide">
-              All The Features You Need
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold mt-3">
-              Unlock the full power of Instagram
-            </h2>
+      <section id="features" className="scroll-mt-24 px-5 py-16 sm:px-8 sm:py-24">
+        <div className="mx-auto max-w-6xl">
+          <SectionHeading label="Made for the way you create" title={<>Less busywork.<br /><span className="gradient-text">More possibilities.</span></>} description="Your audience is ready to connect. Make the next step feel effortless." />
+          <div className="mt-14 space-y-16 sm:mt-20 sm:space-y-24">
+            <VisualFeature mirror image={creatorReaction} alt="Creator reacting excitedly to a message on her phone" eyebrow="Comment to DM" title="Every comment can start something." description="When someone asks for a link, let your automation take it from there. Send your guide, product page, or latest opportunity directly to their DMs." keyword="LINK" message="Of course! Here’s the link." bullets={["Choose a reel or post", "Match a keyword or any comment", "Add your personal touch to the reply"]} />
+            <VisualFeature reverse floatingMessage image={creatorLinks} alt="Creator checking a smartphone" eyebrow="Ask for a follow" title="Make the connection before the next click." description="Invite people to follow your Instagram before delivering a resource. Your follow prompt and link stay together in one simple conversation." keyword="GUIDE" message="Follow along, then tap to get your guide." bullets={["Customize your opening message", "Add a follow prompt when you need it", "Keep delivery in the conversation"]} />
           </div>
-
-          <div className="grid sm:grid-cols-2 gap-6">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="card p-7 hover:shadow-soft transition group"
-              >
-                <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-brand-100 transition">
-                  <Icon className="w-6 h-6 text-brand-600" />
-                </div>
-                <h3 className="font-semibold text-lg">{title}</h3>
-                <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-                  {desc}
-                </p>
-              </div>
-            ))}
-          </div>
+          <div className="mt-20 grid gap-x-8 gap-y-7 border-t border-slate-100 pt-10 sm:grid-cols-2 lg:grid-cols-4">{FEATURES.filter((_, index) => [0,1,2,3].includes(index)).map(({icon: Icon,title,desc})=><div key={title}><Icon className="mb-3 h-5 w-5 text-brand-600" /><h3 className="text-sm font-semibold text-slate-900">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-500">{desc}</p></div>)}</div>
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className="py-12 bg-slate-900 text-white">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { value: "30M+", label: "DMs Sent" },
-            { value: "5M+", label: "Followers Gained" },
-            { value: "10M+", label: "Comments Replied" },
-            { value: "12+", label: "Countries" },
-          ].map(({ value, label }) => (
-            <div key={label}>
-              <p className="text-3xl font-bold">{value}</p>
-              <p className="text-sm text-slate-400 mt-1">{label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Product benefits */}
+      <section className="border-y border-slate-100 bg-slate-50/70 px-5 py-10 sm:px-8"><div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 lg:grid-cols-4">{[["Your voice", "Customize your replies"],["Your audience", "Connect through Instagram"],["Your pace", "Start free, grow when ready"],["Your control", "Manage your automations"]].map(([title,text])=><div key={title} className="text-center"><p className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">{title}</p><p className="mt-2 text-xs text-slate-500 sm:text-sm">{text}</p></div>)}</div></section>
 
       {/* How it works */}
-      <section id="how-it-works" className="scroll-mt-20 py-24 px-6 bg-slate-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <p className="text-brand-600 font-semibold text-sm uppercase tracking-wide">
-              How it works
-            </p>
-            <h2 className="text-3xl sm:text-4xl font-bold mt-3">
-              3 Easy Steps, Unlimited Possibilities
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {STEPS.map(({ num, title, desc }) => (
-              <div key={num} className="text-center">
-                <div className="brand-gradient w-14 h-14 text-white rounded-2xl flex items-center justify-center text-lg font-bold mx-auto mb-5 shadow-glow">
-                  {num}
-                </div>
-                <h3 className="font-semibold text-lg">{title}</h3>
-                <p className="text-slate-500 text-sm mt-2">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section id="how-it-works" className="scroll-mt-24 px-5 py-16 sm:px-8 sm:py-24"><div className="mx-auto max-w-6xl"><SectionHeading label="From post to conversation" title={<>Three steps.<br /><span className="gradient-text">One less thing to do.</span></>} description="Connect your professional Instagram account, then build your first automation." /><div className="mt-12 grid gap-5 md:grid-cols-3">{[{num:"01",title:"Pick your post",desc:"Choose the post or reel you want your automation to respond to.",icon:MessageSquare},{num:"02",title:"Make it yours",desc:"Set your trigger, write your reply, and add the resource you want to share.",icon:Link2},{num:"03",title:"Let the conversation begin",desc:"Activate your automation and track activity from your dashboard.",icon:Zap}].map(({num,title,desc,icon:Icon})=><div key={num} className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-7"><div className="mb-7 flex items-center justify-between"><span className="text-xs font-semibold text-slate-400">STEP {num}</span><Icon className="h-5 w-5 text-brand-500" /></div><h3 className="text-lg font-semibold tracking-tight">{title}</h3><p className="mt-3 text-sm leading-6 text-slate-500">{desc}</p></div>)}</div></div></section>
 
       {/* Pricing */}
       <section id="pricing" className="pricing-section scroll-mt-20 border-y border-slate-100 px-4 py-16 sm:px-6 sm:py-24">
@@ -270,24 +191,7 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="brand-gradient max-w-3xl mx-auto text-center card p-12 border-0 text-white">
-          <h2 className="text-3xl font-bold">
-            Ready to stop missing DMs?
-          </h2>
-          <p className="text-white/80 mt-3 mb-8">
-            Create your free account and launch your first Instagram automations
-            in minutes. Upgrade only when you need more.
-          </p>
-          <Link
-            to="/register"
-            className="inline-flex items-center gap-2 bg-white text-brand-700 font-semibold px-8 py-4 rounded-xl hover:bg-slate-50 transition"
-          >
-            Create Account
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
+      <section className="px-5 py-16 sm:px-8 sm:py-24"><div className="landing-final mx-auto max-w-6xl overflow-hidden rounded-[28px] px-6 py-14 text-center sm:px-12 sm:py-20"><span className="text-xs font-semibold uppercase tracking-[.15em] text-brand-600">More creating. Less repeating.</span><h2 className="mx-auto mt-4 max-w-xl text-3xl font-bold leading-tight tracking-tight sm:text-5xl">Your next conversation<br />starts here.</h2><p className="mx-auto mt-5 max-w-md text-sm leading-6 text-slate-500">Start with free automation. Make it yours. Upgrade when your content is ready for more.</p><Link to="/register" className="btn-primary mt-7 min-h-12 rounded-xl px-7 text-sm">Start for free <ArrowRight className="h-4 w-4" /></Link></div></section>
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-slate-950 px-6 pb-8 pt-16 text-slate-300">
@@ -361,4 +265,14 @@ function FooterColumn({ title, links }) {
       </div>
     </div>
   );
+}
+
+function SectionHeading({label,title,description}) {
+  return <div className="mx-auto max-w-2xl text-center"><p className="text-xs font-semibold uppercase tracking-[.15em] text-brand-600">{label}</p><h2 className="mt-4 text-3xl font-bold leading-[1.1] tracking-tight text-slate-950 sm:text-5xl">{title}</h2><p className="mx-auto mt-5 max-w-md text-sm leading-6 text-slate-500 sm:text-base">{description}</p></div>;
+}
+function MessagePreview({keyword,message,className=""}) {
+ return <div className={`rounded-2xl border border-white bg-white/95 p-4 shadow-xl shadow-slate-900/10 backdrop-blur ${className}`}><div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400"><MessageCircle className="h-3.5 w-3.5 text-brand-500" />Automation preview</div><div className="mt-3 flex items-center justify-between gap-3"><span className="rounded-full bg-slate-100 px-3 py-2 text-xs text-slate-600">{keyword}</span><ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" /><span className="rounded-xl bg-gradient-to-r from-cyan-50 to-violet-50 px-3 py-2 text-xs leading-5 text-slate-700">{message}</span></div></div>;
+}
+function VisualFeature({image,alt,eyebrow,title,description,keyword,message,bullets,reverse=false,mirror=false,floatingMessage=false}) {
+ return <div className="grid items-center gap-9 lg:grid-cols-2 lg:gap-20"><div className={`relative mx-auto w-full max-w-[470px] pb-6 ${reverse ? "lg:order-2" : ""}`}><div className={mirror || floatingMessage ? `landing-feature-organic relative aspect-[1/1] ${mirror ? "landing-feature-soft" : ""}` : "aspect-[1/1] overflow-hidden rounded-[28px] bg-slate-50"}><img src={image} alt={alt} loading="lazy" decoding="async" width="1024" height="1024" className={`h-full w-full object-cover ${mirror || floatingMessage ? "landing-feature-organic-image" : ""} ${mirror ? "-scale-x-100" : ""}`} /></div>{floatingMessage ? <div className="landing-phone-message absolute left-0 top-[26%] z-10 w-[58%] sm:-left-3"><div className="relative rounded-2xl border border-white bg-white/95 p-3 shadow-xl shadow-brand-900/10 backdrop-blur sm:p-4"><div className="mb-2 flex items-center gap-2 text-[10px] font-semibold text-brand-600"><MessageCircle className="h-3.5 w-3.5" />JustDMs</div><p className="text-xs leading-5 text-slate-700 sm:text-sm">Follow along to get your guide ✨</p><div className="mt-3 rounded-xl bg-gradient-to-r from-cyan-50 to-violet-50 px-3 py-2 text-center text-xs font-semibold text-brand-700">I’m following ✓</div><span aria-hidden="true" className="absolute -bottom-2 right-6 h-4 w-4 rotate-45 rounded-sm bg-white" /></div><div className="ml-5 mt-5 inline-flex items-center gap-2 rounded-full border border-white bg-white/95 px-3 py-2 text-[11px] font-medium text-slate-600 shadow-lg shadow-brand-900/5"><CheckCircle2 className="h-3.5 w-3.5 text-brand-500" />Your guide is on its way</div></div> : <MessagePreview keyword={keyword} message={message} className="absolute bottom-0 left-3 right-3 sm:left-6 sm:right-6" />}</div><div className={`mx-auto w-full max-w-md ${reverse ? "lg:order-1" : ""}`}><p className="text-xs font-semibold uppercase tracking-[.13em] text-brand-600">{eyebrow}</p><h3 className="mt-4 text-3xl font-bold leading-tight tracking-tight text-slate-950 sm:text-4xl">{title}</h3><p className="mt-5 text-sm leading-7 text-slate-500 sm:text-base">{description}</p><ul className="mt-6 space-y-3">{bullets.map(text=><li className="flex items-start gap-2.5 text-sm leading-6 text-slate-600" key={text}><CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-brand-500" />{text}</li>)}</ul><Link to="/register" className="mt-7 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-800">Try it for free <ArrowRight className="h-4 w-4" /></Link></div></div>;
 }

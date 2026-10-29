@@ -1,0 +1,9 @@
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+export function GoogleMark() {
+  return <svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.36Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.24-2.51c-.9.6-2.05.96-3.38.96-2.6 0-4.8-1.76-5.59-4.12H3.07v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.41 13.92A6 6 0 0 1 6.1 12c0-.67.11-1.32.31-1.92V7.49H3.07A10 10 0 0 0 2 12c0 1.61.38 3.14 1.07 4.51l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.96c1.47 0 2.79.51 3.82 1.51l2.87-2.87A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.93 5.49l3.34 2.59C7.2 7.72 9.4 5.96 12 5.96Z"/></svg>;
+}
+export function PasswordField({ value, onChange, signup = false }) {
+  const [visible, setVisible] = useState(false);
+  return <div><label htmlFor="account-password" className="mb-2 block text-sm font-semibold text-slate-700">Password</label><div className="relative"><input id="account-password" name="password" required minLength={signup ? 6 : undefined} autoComplete={signup ? "new-password" : "current-password"} type={visible ? "text" : "password"} placeholder={signup ? "Create a password" : "Enter your password"} className="input min-h-12 rounded-xl bg-white pr-12 text-base" value={value} onChange={onChange} /><button type="button" aria-label={visible ? "Hide password" : "Show password"} aria-pressed={visible} onClick={() => setVisible(!visible)} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-400 hover:text-slate-700">{visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div>{signup && <p className="mt-2 text-xs text-slate-400">Use at least 6 characters.</p>}</div>;
+}

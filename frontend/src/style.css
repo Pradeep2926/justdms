@@ -120,3 +120,57 @@
 .pricing-section button:focus-visible, .pricing-section a:focus-visible { outline: 3px solid #818cf8; outline-offset: 4px; }
 @media (hover: hover) { .pricing-card:hover { border-color: #a5b4fc; box-shadow: 0 18px 50px -24px #6366f140; } }
 @media (prefers-reduced-motion: reduce) { .pricing-card { transition: none; } }
+
+.auth-shell input:focus-visible, .auth-shell button:focus-visible, .auth-shell a:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 3px; }
+.auth-shell input { transition: border-color .18s ease, box-shadow .18s ease; }
+@media (prefers-reduced-motion: reduce) { .auth-shell input { transition: none; } }
+
+.auth-shell .btn-primary { background: linear-gradient(to right, #55c6df, #2861d8, #7639df); box-shadow: none; }
+.auth-shell .input { box-shadow: none; border-color: #e2e8f0; }
+
+.auth-portrait-panel { background: #eff5fc; }
+.auth-gradient-text { background: linear-gradient(90deg, #35a9c9, #2861d8, #7639df); background-clip: text; -webkit-background-clip: text; color: transparent; }
+.auth-portrait-panel > img { mask-image: linear-gradient(to bottom, transparent, #000 20%); }
+
+.auth-card-stage { background: radial-gradient(ellipse at 100% 0%, #f2edfc 0%, transparent 55%), radial-gradient(ellipse at 0% 100%, #eaf9fc 0%, transparent 55%), #f8fafc; }
+.auth-floating-card { box-shadow: 0 24px 70px -28px #33415530, 0 2px 8px #33415504; animation: auth-card-arrive .35s ease-out both; }
+@keyframes auth-card-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1023px) { .auth-card-stage { min-height: 100svh; } }
+@media (max-width: 380px) { .auth-floating-card { padding: 24px 18px; border-radius: 20px; } }
+@media (prefers-reduced-motion: reduce) { .auth-floating-card { animation: none; } }
+.auth-compact input { min-height: 44px; }
+.auth-compact button[type="submit"], .auth-compact .auth-google { min-height: 44px; }
+
+.landing-hero { background: radial-gradient(ellipse at 80% 0%, #f0eafd 0%, transparent 55%), radial-gradient(ellipse at 0% 50%, #effbfe 0%, transparent 55%), #fff; }
+.landing-portrait { filter: drop-shadow(0 18px 35px #5862a512); }
+.landing-final { background: radial-gradient(ellipse at 0% 100%, #dff6fc 0%, transparent 65%), radial-gradient(ellipse at 100% 0%, #e7dffa 0%, transparent 65%), #f5f7fc; }
+html:has(.landing-page) { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html:has(.landing-page) { scroll-behavior: auto; } }
+
+/* Blend the featured creator into the page without a square photo frame. */
+.landing-feature-organic::before {
+  content: "";
+  position: absolute;
+  inset: 9% -3% 3%;
+  border-radius: 24px;
+  clip-path: polygon(10% 0, 100% 7%, 92% 100%, 0 93%);
+  background: radial-gradient(ellipse at 35% 40%, #e4f7fb, #eee7fc 60%, #faf8ff 80%);
+  transform: rotate(-3deg);
+}
+.landing-feature-organic-image {
+  position: relative;
+  border-radius: 20px;
+  clip-path: polygon(7% 0, 100% 5%, 94% 100%, 0 94%);
+}
+
+.landing-feature-soft::before {
+  border-radius: 48% 52% 57% 43% / 55% 42% 58% 45%;
+  clip-path: none;
+  transform: rotate(-7deg);
+}
+.landing-feature-soft .landing-feature-organic-image {
+  clip-path: none;
+  border-radius: 45% 45% 38% 38% / 38% 38% 24% 24%;
+  -webkit-mask-image: radial-gradient(ellipse 66% 70% at 50% 44%, #000 57%, transparent 76%);
+  mask-image: radial-gradient(ellipse 66% 70% at 50% 44%, #000 57%, transparent 76%);
+}
