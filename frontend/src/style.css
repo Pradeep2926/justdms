@@ -183,3 +183,20 @@ html:has(.landing-page) { scroll-behavior: smooth; }
   .landing-has-offer .landing-hero { padding-top: calc(9rem + 48px); }
   .landing-has-offer section[id] { scroll-margin-top: 128px; }
 }
+
+/* Give billing a distinct surface while staying within the logo palette. */
+.billing-panel::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -28px -16px 0;
+  pointer-events: none;
+  border-radius: 32px;
+  background: radial-gradient(ellipse at 85% 30%, #e5dcff 0%, transparent 55%), radial-gradient(ellipse at 5% 65%, #d9f5fc 0%, transparent 55%);
+  opacity: .75;
+}
+.billing-current { background: linear-gradient(110deg, #eaf8fc, #f4f0ff 65%, #eae4fc); }
+.billing-pro-card { box-shadow: 0 12px 36px -16px #6054ae45, 0 2px 6px #45507408; }
+.billing-price-header { background: radial-gradient(ellipse at 100% 0%, #d2c3fa 0%, transparent 65%), linear-gradient(125deg, #def5fb 0%, #eee7fc 70%, #e4dafb 100%); }
+.billing-features { background: linear-gradient(155deg, #f1edfc, #eaf5fa 75%); }
+@media (prefers-reduced-motion: no-preference) { .billing-pro-card { transition: box-shadow .25s ease; } }

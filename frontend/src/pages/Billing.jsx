@@ -1,32 +1,10 @@
 import { confirmAction } from "../components/common/AppDialog";
 import { useEffect, useMemo, useState } from "react";
-import {
-  BarChart3,
-  Check,
-  CreditCard,
-  Crown,
-  Infinity,
-  MessageCircleReply,
-  ShieldCheck,
-  Sparkles,
-  Zap,
-} from "lucide-react";
+import BillingPanel from "../components/billing/BillingPanel";
 import AppLayout from "../components/layout/AppLayout";
 import api from "../api/api";
 import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
-
-const FEATURES = [
-  "Comment-to-DM automation",
-  "Keyword triggers",
-  "Automatic comment replies",
-  "DM automation",
-  "Follow-gate flows",
-  "Link delivery",
-  "Lead collection",
-  "Analytics",
-  "Unlimited automations",
-];
 
 async function billingHeaders(user) {
   const { data } = await supabase.auth.getSession();
@@ -79,6 +57,7 @@ export default function Billing({ embedded = false }) {
       setFoundingOffer(data.foundingOffer || null);
       setCheckoutConfigured(data.checkoutConfigured);
       setCheckoutCurrencies(data.checkoutCurrencies || { INR: data.checkoutConfigured, USD: false });
+      if (["monthly", "yearly"].includes(data.subscription?.billing_cycle)) setBillingCycle(data.subscription.billing_cycle);
       if (data.subscription?.currency) setCurrency(data.subscription.currency);
     } catch (error) {
       setMessage(error.response?.data?.error || "Unable to load billing details.");
@@ -177,178 +156,12 @@ export default function Billing({ embedded = false }) {
       )
     : null;
 
-  return (
-    <Layout title="Billing" subtitle="Manage your JustDMs Pro subscription">
-      <div className="mx-auto max-w-5xl space-y-6">
-        {active && (
-          <section className="flex flex-col gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-600 text-white">
-                <ShieldCheck className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="font-bold text-emerald-950">JustDMs Pro is active</p>
-                <p className="text-sm text-emerald-800">
-                  {referralActive && !paidActive ? "Referral reward" : subscription.billing_cycle === "yearly" ? "Yearly billing" : "Monthly billing"}
-                  {paidActive ? ` · ${subscription.currency || "INR"}` : ""}
-                  {renewalDate ? ` · Access through ${renewalDate}` : ""}
-                </p>
-              </div>
-            </div>
-            <span className="self-start rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold uppercase text-white sm:self-auto">
-              {subscription.cancel_at_period_end ? "Ends this period" : "Active"}
-            </span>
-          </section>
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-3"><p className="text-sm font-semibold text-slate-600">Choose your billing currency</p><div role="group" aria-label="Billing currency" className="inline-flex rounded-xl border border-slate-200 bg-white p-1">{["INR", "USD"].map(value => <button key={value} type="button" disabled={checkingOut || paidActive} aria-pressed={currency === value} onClick={() => setCurrency(value)} className={`min-h-11 rounded-lg px-5 text-sm font-semibold disabled:cursor-not-allowed ${currency === value ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}>{value === "INR" ? "₹ INR" : "$ USD"}</button>)}</div></div>
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="border-b border-slate-100 bg-slate-950 p-6 text-white sm:p-8 lg:border-b-0 lg:border-r">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-cyan-400 text-slate-950">
-                  <Crown className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-cyan-300">One plan. Everything included.</p>
-                  <h2 className="text-2xl font-bold">JustDMs Pro</h2>
-                </div>
-              </div>
-
-              <p className="mt-6 max-w-md text-slate-300">
-                Everything you need to automate Instagram DMs, capture leads, and respond while interest is high.
-              </p>
-
-              <div className="mt-7 flex items-end gap-2">
-                <span className="text-4xl font-bold sm:text-5xl">{plan.amount}</span>
-                <span className="pb-1 text-slate-400">{plan.suffix}</span>
-              </div>
-              {introductory && <p className="mt-3 text-sm leading-6 text-violet-200"><span className="font-semibold text-white">Founding offer</span> · ₹99 for the first month, then ₹199/month, billed automatically until cancelled. New paid subscriptions only; INR monthly plan.</p>}
-              {plan.monthly && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-slate-300">Equivalent to {plan.monthly}</span>
-                  <span className="rounded-full bg-emerald-400 px-2.5 py-1 font-bold text-emerald-950">
-                    {plan.savings}
-                  </span>
-                </div>
-              )}
-
-              <div className="mt-8 rounded-lg border border-white/15 bg-white/5 p-1">
-                <div className="grid grid-cols-2 gap-1" aria-label="Billing period">
-                  {[
-                    ["monthly", "Monthly"],
-                    ["yearly", "Yearly · Best Value"],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setBillingCycle(value)}
-                      className={`min-h-11 rounded-md px-3 text-sm font-bold transition ${
-                        billingCycle === value
-                          ? "bg-white text-slate-950 shadow-sm"
-                          : "text-slate-300 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {introductory && <fieldset className="mt-5"><legend className="mb-2 text-xs font-semibold text-slate-200">Claim with</legend><div className="grid grid-cols-2 gap-2">{[["upi", "UPI AutoPay"], ["card", "Debit / credit card"]].map(([value, label]) => <label key={value} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs ${offerPaymentMethod === value ? "border-violet-300 bg-violet-400/20 text-white" : "border-white/20 text-slate-300"}`}><input type="radio" name="introductory-payment-method" value={value} checked={offerPaymentMethod === value} onChange={() => setOfferPaymentMethod(value)} disabled={checkingOut} />{label}</label>)}</div></fieldset>}
-              <button
-                type="button"
-                onClick={startCheckout}
-                disabled={authLoading || loading || checkingOut || active || !(currency === "INR" ? checkoutConfigured : checkoutCurrencies.USD)}
-                className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-cyan-400 px-5 font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-55"
-              >
-                <CreditCard className="h-5 w-5" />
-                {active
-                  ? "Current plan"
-                  : checkingOut
-                    ? "Opening checkout..."
-                    : introductory ? "Start Pro · ₹99 first month" : `Choose ${billingCycle}`}
-              </button>
-              {!(currency === "INR" ? checkoutConfigured : checkoutCurrencies.USD) && !loading && (
-                <p className="mt-3 text-center text-xs text-amber-300">
-                  {currency} checkout will be available after payment setup is completed.
-                </p>
-              )}
-            </div>
-
-            <div className="p-6 sm:p-8">
-              <div className="flex items-center gap-2 text-slate-950">
-                <Sparkles className="h-5 w-5 text-cyan-600" />
-                <h3 className="text-lg font-bold">Everything in Pro</h3>
-              </div>
-              <div className="mt-6 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-                {FEATURES.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3 text-sm font-medium text-slate-700">
-                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                      <Check className="h-3.5 w-3.5" />
-                    </span>
-                    {feature}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                <Benefit icon={MessageCircleReply} label="Automate replies" />
-                <Benefit icon={Zap} label="Deliver instantly" />
-                <Benefit icon={BarChart3} label="Measure results" />
-              </div>
-
-              <div className="mt-8 border-t border-slate-100 pt-6">
-                <div className="flex items-center gap-2 font-bold text-slate-900">
-                  <Infinity className="h-5 w-5 text-cyan-600" />
-                  Unlimited DMs*
-                </div>
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  *Subject to Instagram/Meta API limits and fair usage.
-                </p>
-              </div>
-
-              {message && (
-                <div className={`mt-6 rounded-lg border px-4 py-3 text-sm ${
-                  message.includes("active")
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-amber-200 bg-amber-50 text-amber-900"
-                }`}>
-                  {message}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {active && !subscription.cancel_at_period_end && (
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={cancelSubscription}
-              disabled={checkingOut}
-              className="text-sm font-semibold text-slate-500 underline decoration-slate-300 underline-offset-4 hover:text-red-600 disabled:opacity-50"
-            >
-              Cancel renewal
-            </button>
-          </div>
-        )}
-
-        <p className="text-center text-xs leading-5 text-slate-500">
-          Prices include access to all currently listed Pro features. Instagram functionality depends on Meta platform availability and policies.
-        </p>
-      </div>
-    </Layout>
-  );
-}
-
-function Benefit({ icon: Icon, label }) {
-  return (
-    <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-700">
-      <Icon className="h-4 w-4 text-cyan-600" />
-      {label}
-    </div>
-  );
+  return <Layout title="Billing" subtitle="Your plan, payments, and what’s next.">
+    <BillingPanel {...{ currency, setCurrency, billingCycle, setBillingCycle, plan, introductory,
+      offerPaymentMethod, setOfferPaymentMethod, active, paidActive, subscription, renewalDate,
+      loading, checkingOut, authLoading, startCheckout, cancelSubscription, message }}
+      checkoutAvailable={currency === "INR" ? checkoutConfigured : checkoutCurrencies.USD} />
+  </Layout>;
 }
 
 function EmbeddedBilling({ children }) { return <div>{children}</div>; }
