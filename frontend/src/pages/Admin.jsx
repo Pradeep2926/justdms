@@ -103,7 +103,7 @@ export default function Admin() {
     <button aria-label="Refresh admin overview" className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50 sm:px-4" disabled={loading || authLoading || !user} onClick={refresh}><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /><span className="hidden sm:inline">Refresh</span></button>
   }>
     <div className="mx-auto min-w-0 max-w-[1500px] space-y-5 sm:space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[11px] text-slate-500"><span className="inline-flex items-center gap-1.5 font-semibold text-violet-700"><ShieldCheck className="h-3.5 w-3.5" /> Admin workspace <span className="mx-1 text-slate-300">/</span><span className="font-normal text-slate-500">Read only</span></span><span>{overview ? `Updated ${date(overview.generatedAt)} IST` : "Authorized administrators only"}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[11px] text-slate-500"><span className="inline-flex items-center gap-1.5 font-semibold text-violet-700"><ShieldCheck className="h-3.5 w-3.5" /> Admin workspace <span className="mx-1 text-slate-300">/</span><span className="font-normal text-slate-500">Access management</span></span><span>{overview ? `Updated ${date(overview.generatedAt)} IST` : "Authorized administrators only"}</span></div>
       {error && <div role="alert" className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><AlertCircle className="h-5 w-5 shrink-0" /><div><p className="font-semibold">{overview ? "Unable to refresh" : "Admin overview unavailable"}</p><p className="mt-1">{error}</p>{overview && <p className="mt-1">The previous snapshot is shown below.</p>}</div></div>}
       {(authLoading || loading && !overview) && <div role="status" className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5">{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-36 animate-pulse rounded-2xl border border-slate-200 bg-white" />)}<span className="sr-only">Loading admin overview</span></div>}
       {summary && <>
@@ -144,7 +144,7 @@ export default function Admin() {
         </section>
         <p className="pb-2 text-center text-[10px] leading-5 text-slate-400">All times in IST. Saved token and billing status; no live provider checks. Snapshots may be reused for up to 30 seconds.</p>
       </>}
-      {selected && <AdminUserDetails key={selected.id} user={selected} onClose={() => setSelectedId(null)} />}
+      {selected && <AdminUserDetails key={selected.id} user={selected} onGranted={refresh} onClose={() => setSelectedId(null)} />}
     </div>
   </AppLayout>;
 }

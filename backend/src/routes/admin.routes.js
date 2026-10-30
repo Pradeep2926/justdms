@@ -4,6 +4,8 @@ const { getAuthenticatedUser } = require("../lib/authClient");
 const { createRequireAdmin } = require("../lib/adminAccess");
 const { loadAdminOverview } = require("../services/admin.service");
 
+const { grantProMonth } = require("../services/adminGrant.service");
+
 const router = express.Router();
 router.use(createRequireAdmin({ getUser: getAuthenticatedUser }));
 
@@ -27,6 +29,22 @@ router.get("/overview", async (req, res) => {
   } catch (error) {
     console.error("Admin overview failed:", error.message);
     return res.status(503).json({ error: "Unable to load the admin overview. Check backend storage and server logs." });
+  }
+});
+
+router.post("/users/:userId/pro-grant", async (req, res) => {
+  try {
+    const result = await grantProMonth(supabase, {
+      userId: req.params.userId, requestId: req.body?.requestId, admin: req.adminUser,
+    });
+    // Invalidate pending overview reads too, so a stale snapshot cannot hide the grant.
+    const inFlight = pending;
+    snapshot = null;
+    snapshotAt = 0;
+    if (inFlight) inFlight.finally(() => { snapshot = null; snapshotAt = 0; }).catch(() => {});
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.status || 503).json({ error: error.message });
   }
 });
 
