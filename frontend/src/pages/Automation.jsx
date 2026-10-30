@@ -1,6 +1,7 @@
 import { showMessage, confirmAction } from "../components/common/AppDialog";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useUpgrade } from "../components/subscription/UpgradeContext";
 import AppLayout from "../components/layout/AppLayout";
 import AutomationBuilder from "../components/automation/AutomationBuilder";
 import AutomationList from "../components/automation/AutomationList";
@@ -14,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 export default function Automation() {
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
   const navigate = useNavigate();
+  const { openUpgrade } = useUpgrade();
   const { isPro, activeAutomationLimit, loading: subscriptionLoading } = useSubscription(user);
   const [automations, setAutomations] = useState([]);
   const [loadingAutomations, setLoadingAutomations] = useState(true);
@@ -107,7 +109,8 @@ export default function Automation() {
       });
       await refreshAutomations();
     } catch (err) {
-      showMessage(err.response?.data?.error || err.message || "Failed to update automation");
+      if (err.response?.data?.code === "FREE_AUTOMATION_LIMIT") openUpgrade("limit");
+      else showMessage(err.response?.data?.error || err.message || "Failed to update automation");
     }
   };
 
@@ -177,7 +180,7 @@ export default function Automation() {
                 </p>
               </div>
             </div>
-            <button type="button" onClick={() => navigate("/billing")} className="btn-secondary shrink-0 bg-white">
+            <button type="button" onClick={() => openUpgrade("manual")} className="btn-secondary shrink-0 bg-white">
               <Crown className="h-4 w-4" /> Upgrade to Pro
             </button>
           </section>
@@ -199,6 +202,7 @@ export default function Automation() {
               if (showBuilder) {
                 closeBuilder();
               } else {
+                if (freeLimitReached) { openUpgrade("limit"); return; }
                 setEditingAutomation(null);
                 setShowBuilder(true);
               }

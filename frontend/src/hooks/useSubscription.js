@@ -6,6 +6,7 @@ const subscriptionRequests = new Map();
 
 export function useSubscription(user) {
   const email = user?.email;
+  const [verified, setVerified] = useState(false);
   const [subscription, setSubscription] = useState(
     () => subscriptionCache.get(email) || null
   );
@@ -30,7 +31,9 @@ export function useSubscription(user) {
       const nextSubscription = await request;
       subscriptionCache.set(email, nextSubscription);
       setSubscription(nextSubscription);
+      setVerified(true);
     } catch {
+      setVerified(false);
       setSubscription(null);
     } finally {
       setLoading(false);
@@ -38,10 +41,17 @@ export function useSubscription(user) {
   }, [email]);
 
   useEffect(() => {
+    setVerified(false);
     const cached = subscriptionCache.get(email);
     if (cached) setSubscription(cached);
     setLoading(!cached);
     refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const reload = () => refresh();
+    window.addEventListener("justdms:subscription-updated", reload);
+    return () => window.removeEventListener("justdms:subscription-updated", reload);
   }, [refresh]);
 
   const expiresAt = subscription?.ends_at || subscription?.current_end;
@@ -53,6 +63,7 @@ export function useSubscription(user) {
   return {
     subscription,
     loading,
+    verified,
     isPro,
     plan: isPro ? "pro" : "free",
     activeAutomationLimit: isPro ? null : 2,

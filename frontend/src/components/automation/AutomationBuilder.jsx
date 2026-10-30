@@ -17,6 +17,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { useUpgrade } from "../subscription/UpgradeContext";
 import PostSelector from "./PostSelector";
 import RetriggerStatus from "./RetriggerStatus";
 import api from "../../api/api";
@@ -151,6 +152,7 @@ export default function AutomationBuilder({
       DEFAULT_STILL_NOT_FOLLOWING
   );
   const [saveError, setSaveError] = useState("");
+  const { openUpgrade } = useUpgrade();
   const [saving, setSaving] = useState(false);
   const [modal, setModal] = useState(null);
 
@@ -237,6 +239,7 @@ export default function AutomationBuilder({
       onSaved?.();
     } catch (err) {
       setSaveError(err.response?.data?.error || err.message || "Failed to save automation");
+      if (err.response?.data?.code === "FREE_AUTOMATION_LIMIT") openUpgrade("limit");
     } finally {
       setSaving(false);
     }
@@ -339,7 +342,7 @@ export default function AutomationBuilder({
         </div>
       </div>
 
-      {saveError && <div role="alert" className="mx-4 mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-amber-950">Unable to save automation</p><p className="mt-1 text-sm text-amber-900">{saveError}</p></div>{/free plan|upgrade|active automations/i.test(saveError) && <a href="/billing" className="shrink-0 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 ring-1 ring-brand-200">View Pro plan</a>}<button type="button" aria-label="Dismiss save error" onClick={() => setSaveError("")} className="self-start px-2 text-xl text-amber-800">×</button></div>}
+      {saveError && <div role="alert" className="mx-4 mt-4 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 sm:mx-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-amber-950">Unable to save automation</p><p className="mt-1 text-sm text-amber-900">{saveError}</p></div>{/free plan|upgrade|active automations/i.test(saveError) && <button type="button" onClick={() => openUpgrade("limit")} className="shrink-0 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-brand-700 ring-1 ring-brand-200">View Pro plan</button>}<button type="button" aria-label="Dismiss save error" onClick={() => setSaveError("")} className="self-start px-2 text-xl text-amber-800">×</button></div>}
       <RetriggerStatus loading={retriggering} result={retriggerResult} noticeKey={retriggerNoticeKey} />
 
       <div className="space-y-4 px-4 py-5 sm:px-6 sm:py-6">

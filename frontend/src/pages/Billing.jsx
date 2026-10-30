@@ -28,7 +28,7 @@ function loadRazorpay() {
   });
 }
 
-export default function Billing({ embedded = false }) {
+export default function Billing({ embedded = false, onSubscribed, onCheckoutVisibility }) {
   const Layout = embedded ? EmbeddedBilling : AppLayout;
   const { user, loading: authLoading } = useAuth({ redirectOnFail: true });
   const [currency, setCurrency] = useState("INR");
@@ -107,18 +107,23 @@ export default function Billing({ embedded = false }) {
             });
             setSubscription(data.subscription);
             setMessage("Welcome to JustDMs Pro. Your subscription is active.");
+            window.dispatchEvent(new Event("justdms:subscription-updated"));
+            onSubscribed?.();
           } catch (error) {
             setMessage(error.response?.data?.error || "Payment verification failed.");
+            onCheckoutVisibility?.(false);
           }
         },
-        modal: { ondismiss: () => setCheckingOut(false) },
+        modal: { ondismiss: () => { setCheckingOut(false); onCheckoutVisibility?.(false); } },
       });
       checkout.on("payment.failed", (response) => {
         setMessage(response.error?.description || "Payment failed. Please try again.");
         setCheckingOut(false);
       });
+      onCheckoutVisibility?.(true);
       checkout.open();
     } catch (error) {
+      onCheckoutVisibility?.(false);
       setMessage(error.response?.data?.error || error.message || "Unable to start checkout.");
     } finally {
       setCheckingOut(false);

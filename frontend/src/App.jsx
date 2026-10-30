@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import UpgradeProvider from "./components/subscription/UpgradeProvider";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
@@ -30,6 +31,7 @@ import Admin from "./pages/Admin";
 export default function App() {
   return (
     <BrowserRouter>
+      <UpgradeProvider>
       <Routes>
         {/* Public */}
         <Route path="/" element={<Home />} />
@@ -68,6 +70,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Home />} />
       </Routes>
+      </UpgradeProvider>
     </BrowserRouter>
   );
 }

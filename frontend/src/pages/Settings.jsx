@@ -4,8 +4,10 @@ import AppLayout from "../components/layout/AppLayout";
 import { useAuth } from "../hooks/useAuth";
 import { useSearchParams, Link } from "react-router-dom";
 import { useInstagram } from "../hooks/useInstagram";
-import Billing from "./Billing";
-import { Instagram, RefreshCw } from "lucide-react";
+import InvoiceHistory from "../components/billing/InvoiceHistory";
+import api from "../api/api";
+import { confirmAction } from "../components/common/AppDialog";
+import { Instagram, RefreshCw, Unplug } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 export default function Settings() {
@@ -13,6 +15,21 @@ export default function Settings() {
   const [params, setParams] = useSearchParams();
   const tab = ["general", "accounts", "billing"].includes(params.get("tab")) ? params.get("tab") : "general";
   const { ig, connected, reconnectRequired, loading: accountLoading } = useInstagram(user?.email);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const disconnect = async () => {
+    if (disconnecting || !ig?.id) return;
+    if (!await confirmAction("Disconnect Instagram? Your active automations will be paused and saved. Reconnect Instagram and reactivate them when you’re ready.")) return;
+    setDisconnecting(true); setAccountError("");
+    try {
+      await api.post("/instagram/disconnect", { accountId: ig.id });
+      try { sessionStorage.removeItem(`justdms:instagram-dashboard:${user.email}`); } catch { /* Reload fetches the saved state. */ }
+      window.location.assign("/settings?tab=accounts");
+    } catch (err) {
+      setAccountError(err.response?.data?.error || "Unable to disconnect Instagram.");
+      setDisconnecting(false);
+    }
+  };
   const [profile, setProfile] = useState({ firstName: "", lastName: "", mobile: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -97,11 +114,15 @@ export default function Settings() {
               {accountLoading ? <p className="mt-6 text-sm text-slate-500">Loading account…</p> : <div className="mt-6 rounded-xl border border-slate-100 p-5 shadow-sm">
                 <div className="flex flex-wrap items-center gap-4">{ig?.profile_picture_url && <img src={ig.profile_picture_url} alt="" className="h-14 w-14 rounded-full object-cover" />}<div><p className="text-lg font-bold text-slate-900">{ig?.username ? `@${ig.username}` : "No Instagram account connected"}</p><p className="mt-1 text-sm text-slate-500">{ig?.name}</p></div><span className={`rounded-full px-3 py-1 text-xs font-semibold ${reconnectRequired ? "bg-amber-50 text-amber-800" : "bg-slate-100 text-slate-600"}`}>{reconnectRequired ? "Reconnect required" : connected ? "Account linked" : "Not connected"}</span></div>
                 <p className="mt-5 text-sm text-slate-500">{reconnectRequired ? "Renew your Instagram connection to resume DMs and sync new reels. Your automations are saved." : "Use Instagram’s secure login to connect or renew account access."}</p>
-                <Link to="/connect-meta?switch=1" className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"><RefreshCw className="h-4 w-4" />{connected ? "Reconnect Instagram" : "Connect Instagram"}</Link>
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                  {disconnecting ? <span role="status" className="px-5 py-3 text-sm text-slate-500">Disconnecting…</span> : <Link to="/connect-meta?switch=1" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-5 py-2.5 text-sm font-semibold text-brand-700 hover:bg-brand-100"><RefreshCw className="h-4 w-4" />{reconnectRequired ? "Reconnect Instagram" : connected ? "Refresh token" : "Connect Instagram"}</Link>}
+                  {connected && <button type="button" disabled={disconnecting} onClick={disconnect} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"><Unplug className="h-4 w-4"/>Disconnect</button>}
+                </div>
+                {accountError && <p role="alert" className="mt-3 text-sm text-red-700">{accountError}</p>}
               </div>}
             </div>
           </section>}
-          {tab === "billing" && <Billing embedded />}
+          {tab === "billing" && <InvoiceHistory />}
           {tab === "general" && <>
           <form onSubmit={saveProfile} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-100 px-5 py-6 sm:px-8">
