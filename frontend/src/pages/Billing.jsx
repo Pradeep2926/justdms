@@ -56,6 +56,7 @@ export default function Billing({ embedded = false }) {
   const [currency, setCurrency] = useState("INR");
   const [checkoutCurrencies, setCheckoutCurrencies] = useState({ INR: false, USD: false });
   const [billingCycle, setBillingCycle] = useState("monthly");
+  const [offerPaymentMethod, setOfferPaymentMethod] = useState("upi");
   const [foundingOffer, setFoundingOffer] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [checkoutConfigured, setCheckoutConfigured] = useState(true);
@@ -102,7 +103,7 @@ export default function Billing({ embedded = false }) {
       const headers = await billingHeaders(user);
       const { data: order } = await api.post(
         "/billing/subscription",
-        { billingCycle, currency, ...(introductory ? { offerCode: foundingOffer.code } : {}) },
+        { billingCycle, currency, ...(introductory ? { offerCode: foundingOffer.code, offerPaymentMethod } : {}) },
         { headers }
       );
 
@@ -113,6 +114,10 @@ export default function Billing({ embedded = false }) {
         name: "JustDMs",
         description: order.planLabel,
         subscription_id: order.subscriptionId,
+        ...(order.offerPaymentMethod ? { config: { display: {
+          blocks: { introductory: { name: order.offerPaymentMethod === "upi" ? "Pay with UPI AutoPay" : "Pay with card", instruments: [{ method: order.offerPaymentMethod }] } },
+          sequence: ["block.introductory"], preferences: { show_default_blocks: false },
+        } } } : {}),
         prefill: { email: user.email },
         theme: { color: "#0567dd" },
         handler: async (payment) => {
@@ -250,6 +255,7 @@ export default function Billing({ embedded = false }) {
                 </div>
               </div>
 
+              {introductory && <fieldset className="mt-5"><legend className="mb-2 text-xs font-semibold text-slate-200">Claim with</legend><div className="grid grid-cols-2 gap-2">{[["upi", "UPI AutoPay"], ["card", "Debit / credit card"]].map(([value, label]) => <label key={value} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs ${offerPaymentMethod === value ? "border-violet-300 bg-violet-400/20 text-white" : "border-white/20 text-slate-300"}`}><input type="radio" name="introductory-payment-method" value={value} checked={offerPaymentMethod === value} onChange={() => setOfferPaymentMethod(value)} disabled={checkingOut} />{label}</label>)}</div></fieldset>}
               <button
                 type="button"
                 onClick={startCheckout}

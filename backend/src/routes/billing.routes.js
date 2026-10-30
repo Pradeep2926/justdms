@@ -199,7 +199,7 @@ router.post("/subscription", requireUser, async (req, res) => {
       });
     }
 
-    const claimedOffer = validateFoundingClaim({ code: req.body.offerCode, currency, cycle: billingCycle, subscription: existing });
+    const claimedOffer = validateFoundingClaim({ code: req.body.offerCode, currency, cycle: billingCycle, subscription: existing, paymentMethod: req.body.offerPaymentMethod });
 
     // A wrong environment plan ID must never result in the wrong charge.
     const { data: remotePlan } = await axios.get(`${RAZORPAY_API}/plans/${plan.planId}`, { auth: razorpayAuth(), timeout: 15000 });
@@ -250,6 +250,7 @@ router.post("/subscription", requireUser, async (req, res) => {
       subscriptionId: razorpaySubscription.id,
       amount: claimedOffer ? claimedOffer.firstAmount : plan.amount,
       currency: plan.currency,
+      offerPaymentMethod: claimedOffer?.paymentMethod || null,
       planLabel: claimedOffer ? "JustDMs Pro: ₹99 first month, then ₹199/month" : plan.label,
       billingCycle,
     });
