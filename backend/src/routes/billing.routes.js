@@ -6,6 +6,8 @@ const { getAuthenticatedUser } = require("../lib/authClient");
 const { isActivePaidSubscription } = require("../lib/automationAccess");
 const { qualifyReferralForSubscription } = require("../lib/referral");
 
+const { foundingOffer, eligibleForFoundingOffer, validateFoundingClaim } = require("../lib/foundingOffer");
+
 const router = express.Router();
 const RAZORPAY_API = "https://api.razorpay.com/v1";
 const { billingPlan, planMatches } = require("../lib/billingPlans");
@@ -150,6 +152,11 @@ router.post("/webhook", async (req, res) => {
   }
 });
 
+router.get("/founding-offer", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  return res.json({ ...foundingOffer(), enabled: foundingOffer().enabled && checkoutConfigured("INR") });
+});
+
 router.get("/subscription", requireUser, async (req, res) => {
   try {
     const subscription = await findSubscriptionByEmail(req.billingUser.email);
@@ -159,6 +166,7 @@ router.get("/subscription", requireUser, async (req, res) => {
         plan: "pro",
         billing_cycle: null,
       },
+      foundingOffer: { ...foundingOffer(), enabled: foundingOffer().enabled && checkoutConfigured("INR"), eligible: eligibleForFoundingOffer(subscription) },
       checkoutConfigured: checkoutConfigured(),
       checkoutCurrencies: { INR: checkoutConfigured("INR"), USD: checkoutConfigured("USD") },
     });
@@ -191,6 +199,8 @@ router.post("/subscription", requireUser, async (req, res) => {
       });
     }
 
+    const claimedOffer = validateFoundingClaim({ code: req.body.offerCode, currency, cycle: billingCycle, subscription: existing });
+
     // A wrong environment plan ID must never result in the wrong charge.
     const { data: remotePlan } = await axios.get(`${RAZORPAY_API}/plans/${plan.planId}`, { auth: razorpayAuth(), timeout: 15000 });
     if (!planMatches(remotePlan, plan)) return res.status(503).json({ error: "The selected payment plan is not configured correctly. Please contact support." });
@@ -198,6 +208,7 @@ router.post("/subscription", requireUser, async (req, res) => {
       `${RAZORPAY_API}/subscriptions`,
       {
         plan_id: plan.planId,
+        ...(claimedOffer ? { offer_id: claimedOffer.offerId } : {}),
         total_count: plan.totalCount,
         quantity: 1,
         customer_notify: 1,
@@ -206,10 +217,15 @@ router.post("/subscription", requireUser, async (req, res) => {
           user_id: req.billingUser.id,
           billing_cycle: billingCycle,
           product: "JustDMs Pro",
+          ...(claimedOffer ? { offer_code: claimedOffer.code, first_month_paise: "9900", renewal_paise: "19900" } : {}),
         },
       },
       { auth: razorpayAuth(), timeout: 15000 }
     );
+
+    if (claimedOffer && razorpaySubscription.offer_id !== claimedOffer.offerId) {
+      throw Object.assign(new Error("The introductory discount could not be confirmed. No checkout has been opened."), { status: 503 });
+    }
 
     const record = {
       ...(existing?.id ? { id: existing.id } : {}),
@@ -232,16 +248,16 @@ router.post("/subscription", requireUser, async (req, res) => {
     return res.json({
       keyId: process.env.RAZORPAY_KEY_ID,
       subscriptionId: razorpaySubscription.id,
-      amount: plan.amount,
+      amount: claimedOffer ? claimedOffer.firstAmount : plan.amount,
       currency: plan.currency,
-      planLabel: plan.label,
+      planLabel: claimedOffer ? "JustDMs Pro: ₹99 first month, then ₹199/month" : plan.label,
       billingCycle,
     });
   } catch (error) {
     console.error("Billing subscription error:", error.response?.data || error);
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       error:
-        error.response?.data?.error?.description ||
+        error.status ? error.message : error.response?.data?.error?.description ||
         "Unable to start subscription checkout.",
     });
   }

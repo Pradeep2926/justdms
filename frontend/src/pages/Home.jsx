@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   MessageCircle,
@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   UserCheck,
 } from "lucide-react";
+import api from "../api/api";
 import logoUrl from "../assets/justdms-logo.png";
 import creatorPortrait from "../assets/auth-creator.jpg";
 import creatorLinks from "../assets/landing-creator-links.jpg";
@@ -62,14 +63,25 @@ const FEATURES = [
 ];
 
 export default function Home() {
+  const previewOffer = import.meta.env.DEV && new URLSearchParams(window.location.search).get("previewOffer") === "1";
+  const [showFoundingOffer, setShowFoundingOffer] = useState(previewOffer);
+  useEffect(() => {
+    let current = true;
+    api.get("/billing/founding-offer").then(({ data }) => {
+      if (current) setShowFoundingOffer(previewOffer || data.enabled === true);
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [previewOffer]);
   const [currency, setCurrency] = useState("INR");
   const [billingCycle, setBillingCycle] = useState("monthly");
   const yearly = billingCycle === "yearly";
-  const proPrice = currency === "INR" ? (yearly ? "₹1,999" : "₹199") : (yearly ? "$49" : "$4.99");
+  const introductory = showFoundingOffer && currency === "INR" && !yearly;
+  const proPrice = currency === "INR" ? (yearly ? "₹1,999" : introductory ? "₹99" : "₹199") : (yearly ? "$49" : "$4.99");
   return (
-    <div className="landing-page min-h-screen overflow-x-clip bg-white">
+    <div className={`landing-page min-h-screen overflow-x-clip bg-white ${showFoundingOffer ? "landing-has-offer" : ""}`}>
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
+        {showFoundingOffer && <div className="founding-offer-banner bg-slate-950 text-white"><div className="mx-auto flex h-full max-w-6xl items-center justify-center gap-3 px-4 sm:gap-5"><Sparkles aria-hidden="true" className="hidden h-4 w-4 shrink-0 text-violet-300 sm:block" /><div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-[.16em] text-violet-300 sm:inline sm:text-[10px]">Founding offer<span className="hidden sm:inline"> · </span></p><p className="text-xs leading-5 text-slate-200 sm:inline sm:text-sm">Pro <strong className="text-white">₹99 for your first month</strong><span className="block text-[10px] text-slate-400 sm:inline sm:text-sm"> · then ₹199/month</span></p></div><Link to="/register" className="inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 text-xs font-semibold transition hover:bg-white/20 sm:px-4">Claim offer <ArrowRight className="h-3.5 w-3.5" /></Link></div></div>}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
           <Link to="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             <img
@@ -174,8 +186,8 @@ export default function Home() {
               <div className="mt-5 inline-flex w-full self-start rounded-xl border border-slate-200/70 bg-white/80 p-1" role="group" aria-label="Pro billing period">
                 {["monthly", "yearly"].map(value => <button key={value} type="button" aria-pressed={billingCycle === value} onClick={() => setBillingCycle(value)} className={`min-h-11 flex-1 rounded-lg px-4 text-sm font-semibold capitalize transition ${billingCycle === value ? "bg-slate-900 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}>{value}</button>)}
               </div>
-              <p className="mt-5 text-5xl font-extrabold tracking-tight text-slate-950" aria-live="polite">{proPrice}<span className="text-sm font-medium tracking-normal text-slate-500"> /{yearly ? "year" : "month"}</span></p>
-              <p className="mt-3 text-sm font-medium text-brand-700">{yearly ? (currency === "INR" ? "Save ₹389 with annual billing" : "Save $10.88 with annual billing") : "Flexible monthly billing"}</p>
+              <p className="mt-5 text-5xl font-extrabold tracking-tight text-slate-950" aria-live="polite">{proPrice}<span className="text-sm font-medium tracking-normal text-slate-500"> /{yearly ? "year" : introductory ? "first month" : "month"}</span></p>
+              <p className="mt-3 text-sm font-medium text-brand-700">{yearly ? (currency === "INR" ? "Save ₹389 with annual billing" : "Save $10.88 with annual billing") : introductory ? "Then ₹199/month · First paid subscription only" : "Flexible monthly billing"}</p>
               <div className="my-7 h-px bg-slate-100" />
               <div className="flex-1 space-y-4">
                 {["Unlimited automations", "Unlimited DMs*", "Comment and keyword triggers", "Ask for a follow before delivery", "Link in Bio and appointment booking", "Analytics and lead collection", "WhatsApp quick support"].map(feature => <span key={feature} className="flex items-start gap-3 text-sm leading-6 text-slate-600"><CheckCircle2 className="h-5 w-5 shrink-0 text-brand-500" />{feature}</span>)}

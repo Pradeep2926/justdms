@@ -56,15 +56,18 @@ export default function Billing({ embedded = false }) {
   const [currency, setCurrency] = useState("INR");
   const [checkoutCurrencies, setCheckoutCurrencies] = useState({ INR: false, USD: false });
   const [billingCycle, setBillingCycle] = useState("monthly");
+  const [foundingOffer, setFoundingOffer] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [checkoutConfigured, setCheckoutConfigured] = useState(true);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
   const [message, setMessage] = useState("");
 
+  const introductory = foundingOffer?.enabled && foundingOffer?.eligible && currency === "INR" && billingCycle === "monthly";
+
   const plan = useMemo(() => currency === "USD"
     ? billingCycle === "yearly" ? { amount: "$49", suffix: "/year", monthly: "$4.08/month", savings: "Save $10.88" } : { amount: "$4.99", suffix: "/month" }
-    : billingCycle === "yearly" ? { amount: "₹1,999", suffix: "/year", monthly: "₹167/month", savings: "Save ₹389" } : { amount: "₹199", suffix: "/month" }, [currency, billingCycle]);
+    : billingCycle === "yearly" ? { amount: "₹1,999", suffix: "/year", monthly: "₹167/month", savings: "Save ₹389" } : introductory ? { amount: "₹99", suffix: "first month" } : { amount: "₹199", suffix: "/month" }, [currency, billingCycle, introductory]);
 
   const loadSubscription = async () => {
     if (!user?.email) return;
@@ -72,6 +75,7 @@ export default function Billing({ embedded = false }) {
       const headers = await billingHeaders(user);
       const { data } = await api.get("/billing/subscription", { headers });
       setSubscription(data.subscription);
+      setFoundingOffer(data.foundingOffer || null);
       setCheckoutConfigured(data.checkoutConfigured);
       setCheckoutCurrencies(data.checkoutCurrencies || { INR: data.checkoutConfigured, USD: false });
       if (data.subscription?.currency) setCurrency(data.subscription.currency);
@@ -98,7 +102,7 @@ export default function Billing({ embedded = false }) {
       const headers = await billingHeaders(user);
       const { data: order } = await api.post(
         "/billing/subscription",
-        { billingCycle, currency },
+        { billingCycle, currency, ...(introductory ? { offerCode: foundingOffer.code } : {}) },
         { headers }
       );
 
@@ -214,6 +218,7 @@ export default function Billing({ embedded = false }) {
                 <span className="text-4xl font-bold sm:text-5xl">{plan.amount}</span>
                 <span className="pb-1 text-slate-400">{plan.suffix}</span>
               </div>
+              {introductory && <p className="mt-3 text-sm leading-6 text-violet-200"><span className="font-semibold text-white">Founding offer</span> · ₹99 for the first month, then ₹199/month, billed automatically until cancelled. New paid subscriptions only; INR monthly plan.</p>}
               {plan.monthly && (
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                   <span className="text-slate-300">Equivalent to {plan.monthly}</span>
@@ -256,7 +261,7 @@ export default function Billing({ embedded = false }) {
                   ? "Current plan"
                   : checkingOut
                     ? "Opening checkout..."
-                    : `Choose ${billingCycle}`}
+                    : introductory ? "Start Pro · ₹99 first month" : `Choose ${billingCycle}`}
               </button>
               {!(currency === "INR" ? checkoutConfigured : checkoutCurrencies.USD) && !loading && (
                 <p className="mt-3 text-center text-xs text-amber-300">

@@ -174,3 +174,12 @@ html:has(.landing-page) { scroll-behavior: smooth; }
   -webkit-mask-image: radial-gradient(ellipse 66% 70% at 50% 44%, #000 57%, transparent 76%);
   mask-image: radial-gradient(ellipse 66% 70% at 50% 44%, #000 57%, transparent 76%);
 }
+
+.founding-offer-banner { height: 88px; }
+.landing-has-offer .landing-hero { padding-top: calc(7rem + 88px); }
+.landing-has-offer section[id] { scroll-margin-top: 168px; }
+@media (min-width: 640px) {
+  .founding-offer-banner { height: 48px; }
+  .landing-has-offer .landing-hero { padding-top: calc(9rem + 48px); }
+  .landing-has-offer section[id] { scroll-margin-top: 128px; }
+}
