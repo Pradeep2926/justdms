@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Crown, X } from "lucide-react";
+import ReminderOfferDialog from "./ReminderOfferDialog";
 import Billing from "../../pages/Billing";
 import { UpgradeContext } from "./UpgradeContext";
 
@@ -8,7 +9,7 @@ export default function UpgradeProvider({ children }) {
   const actions = useMemo(() => ({ openUpgrade: (next = "manual") => setReason(next), closeUpgrade: () => setReason(null) }), []);
   return <UpgradeContext.Provider value={actions}>
     {children}
-    {reason && <UpgradeDialog reason={reason} onClose={() => setReason(null)} />}
+    {["reminder", "limit"].includes(reason) ? <ReminderOfferDialog reason={reason} onClose={() => setReason(null)} /> : reason && <UpgradeDialog reason={reason} onClose={() => setReason(null)} />}
   </UpgradeContext.Provider>;
 }
 export function UpgradeDialog({ reason, onClose, children }) {

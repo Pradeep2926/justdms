@@ -4,6 +4,7 @@ import BillingPanel from "../components/billing/BillingPanel";
 import AppLayout from "../components/layout/AppLayout";
 import api from "../api/api";
 import { useAuth } from "../hooks/useAuth";
+import { openSubscriptionCheckout } from "../lib/razorpayCheckout";
 import { supabase } from "../lib/supabase";
 
 async function billingHeaders(user) {
@@ -14,18 +15,6 @@ async function billingHeaders(user) {
     "X-User-Email": user.email,
     "X-User-Id": user.id,
   };
-}
-
-function loadRazorpay() {
-  if (window.Razorpay) return Promise.resolve(true);
-
-  return new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
 }
 
 export default function Billing({ embedded = false, onSubscribed, onCheckoutVisibility }) {
@@ -76,57 +65,23 @@ export default function Billing({ embedded = false, onSubscribed, onCheckoutVisi
     setMessage("");
 
     try {
-      const loaded = await loadRazorpay();
-      if (!loaded) throw new Error("Payment checkout could not be loaded. Please try again.");
-
       const headers = await billingHeaders(user);
-      const { data: order } = await api.post(
-        "/billing/subscription",
-        { billingCycle, currency, ...(introductory ? { offerCode: foundingOffer.code, offerPaymentMethod } : {}) },
-        { headers }
-      );
-
-      const checkout = new window.Razorpay({
-        key: order.keyId,
-        amount: order.amount,
-        currency: order.currency,
-        name: "JustDMs",
-        description: order.planLabel,
-        subscription_id: order.subscriptionId,
-        ...(order.offerPaymentMethod ? { config: { display: {
-          blocks: { introductory: { name: order.offerPaymentMethod === "upi" ? "Pay with UPI AutoPay" : "Pay with card", instruments: [{ method: order.offerPaymentMethod }] } },
-          sequence: ["block.introductory"], preferences: { show_default_blocks: false },
-        } } } : {}),
-        prefill: { email: user.email },
-        theme: { color: "#0567dd" },
-        handler: async (payment) => {
-          try {
-            const verifyHeaders = await billingHeaders(user);
-            const { data } = await api.post("/billing/verify", payment, {
-              headers: verifyHeaders,
-            });
-            setSubscription(data.subscription);
-            setMessage("Welcome to JustDMs Pro. Your subscription is active.");
-            window.dispatchEvent(new Event("justdms:subscription-updated"));
-            onSubscribed?.();
-          } catch (error) {
-            setMessage(error.response?.data?.error || "Payment verification failed.");
-            onCheckoutVisibility?.(false);
-          }
+      await openSubscriptionCheckout({ user, currency, billingCycle, introductory, foundingOffer, offerPaymentMethod, headers,
+        onVisibility: onCheckoutVisibility,
+        onVerified: next => {
+          setSubscription(next);
+          setCheckingOut(false);
+          setMessage("Welcome to JustDMs Pro. Your subscription is active.");
+          window.dispatchEvent(new Event("justdms:subscription-updated"));
+          onSubscribed?.();
         },
-        modal: { ondismiss: () => { setCheckingOut(false); onCheckoutVisibility?.(false); } },
+        onError: error => setMessage(error.response?.data?.error || error.message || "Payment failed. Please try again."),
+        onDismiss: () => setCheckingOut(false),
       });
-      checkout.on("payment.failed", (response) => {
-        setMessage(response.error?.description || "Payment failed. Please try again.");
-        setCheckingOut(false);
-      });
-      onCheckoutVisibility?.(true);
-      checkout.open();
     } catch (error) {
       onCheckoutVisibility?.(false);
-      setMessage(error.response?.data?.error || error.message || "Unable to start checkout.");
-    } finally {
       setCheckingOut(false);
+      setMessage(error.response?.data?.error || error.message || "Unable to start checkout.");
     }
   };
 
