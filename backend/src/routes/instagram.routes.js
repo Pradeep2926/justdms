@@ -8,6 +8,23 @@ const supabase = require("../lib/supabase");
 
 const router = express.Router();
 
+// Verify ownership from the signed-in session; never trust an email in the body.
+router.post("/disconnect", async (req, res) => {
+  try {
+    const { getAuthenticatedUser } = require("../lib/authClient");
+    const user = await getAuthenticatedUser(req);
+    if (!user?.email) return res.status(401).json({ error: "Please sign in to disconnect Instagram." });
+    if (!/^[0-9a-f-]{36}$/i.test(req.body.accountId || "")) return res.status(400).json({ error: "Choose a connected account." });
+    const { data, error } = await supabase.rpc("disconnect_instagram_account", {
+      p_user_id: user.id, p_user_email: user.email.toLowerCase(), p_account_id: req.body.accountId,
+    });
+    if (error) throw error;
+    return res.json({ disconnected: true, pausedAutomations: data });
+  } catch {
+    return res.status(503).json({ error: "Unable to disconnect Instagram. Please try again or contact support." });
+  }
+});
+
 router.get("/me/:email", async (req, res) => {
   try {
     const dashboard = await getDashboard(req.params.email);

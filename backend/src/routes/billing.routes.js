@@ -175,6 +175,23 @@ router.get("/subscription", requireUser, async (req, res) => {
   }
 });
 
+router.get("/invoices", requireUser, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  try {
+    const subscription = await findSubscriptionByEmail(req.billingUser.email);
+    if (!subscription?.razorpay_subscription_id) return res.json({ invoices: [] });
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) return res.status(503).json({ error: "Invoice history is temporarily unavailable." });
+    const { data } = await axios.get(`${RAZORPAY_API}/invoices`, {
+      auth: razorpayAuth(), timeout: 15000,
+      params: { subscription_id: subscription.razorpay_subscription_id, count: 100 },
+    });
+    const { customerInvoices } = require("../lib/customerInvoices");
+    return res.json({ invoices: customerInvoices(data.items, subscription.razorpay_subscription_id) });
+  } catch {
+    return res.status(502).json({ error: "Unable to load invoices. Please try again." });
+  }
+});
+
 router.post("/subscription", requireUser, async (req, res) => {
   try {
     const billingCycle = req.body.billingCycle;

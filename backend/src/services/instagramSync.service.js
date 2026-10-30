@@ -519,7 +519,7 @@ async function syncAccount(userEmail) {
     userEmail
   );
 
-  if (!account) {
+  if (!account || account.token_status === "disconnected") {
     return null;
   }
 
@@ -562,8 +562,7 @@ async function syncAccount(userEmail) {
     new Date(account.expires_at).getTime() <=
       Date.now();
 
-  const savedAccount = await saveAccount({
-    ...account,
+  const profileUpdates = {
     username: profile.username,
     instagram_username: profile.username,
     instagram_user_id: profile.id,
@@ -590,7 +589,15 @@ async function syncAccount(userEmail) {
       ? "expired"
       : "active",
     last_sync: now,
-  });
+    updated_at: now,
+  };
+  // A sync started before disconnect/reconnect must not restore stale credentials or status.
+  const { data: savedAccount, error: saveError } = await supabase.from("instagram_accounts")
+    .update(profileUpdates).eq("id", account.id)
+    .eq(account.access_token ? "access_token" : "page_access_token", token)
+    .select("*").maybeSingle();
+  if (saveError) throw saveError;
+  if (!savedAccount) return null;
 
   await saveMedia(savedAccount.id, media);
 
@@ -796,7 +803,7 @@ async function getDashboard(userEmail) {
     userEmail
   );
 
-  if (!account) {
+  if (!account || account.token_status === "disconnected") {
     return {
       connected: false,
       account: null,
