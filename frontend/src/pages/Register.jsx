@@ -4,12 +4,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/layout/AuthLayout";
+import { isExistingAccount } from "../lib/signupResult.mjs";
 
 
 export default function Register() {
   const navigate = useNavigate();
 
   const [formError, setFormError] = useState("");
+  const [existingAccount, setExistingAccount] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,6 +43,7 @@ export default function Register() {
     try {
     e.preventDefault();
     setFormError("");
+    setExistingAccount(false);
     setLoading(true);
 
     const profile = {
@@ -48,8 +51,6 @@ export default function Register() {
       lastName: lastName.trim(),
       email: email.trim().toLowerCase(),
     };
-
-    localStorage.setItem("pendingProfile", JSON.stringify(profile));
 
     const { data, error } = await supabase.auth.signUp({
       email: profile.email,
@@ -63,6 +64,14 @@ export default function Register() {
       },
     });
 
+    if (isExistingAccount(data, error)) {
+      localStorage.removeItem("pendingProfile");
+      setExistingAccount(true);
+      setFormError("You already have an account. Please log in.");
+      setLoading(false);
+      return;
+    }
+
     if (error) {
       setFormError(error.message);
       setLoading(false);
@@ -70,6 +79,7 @@ export default function Register() {
     }
 
     const user = data.user;
+    localStorage.setItem("pendingProfile", JSON.stringify(profile));
 
     if (!user) {
       navigate(`/verify?email=${encodeURIComponent(profile.email)}`);
@@ -137,7 +147,14 @@ export default function Register() {
   return (
     <AuthLayout compact title="Create your account" subtitle="Free automation. No credit card required.">
       <form onSubmit={handleRegister} className="space-y-3">
-        {formError && <p role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm leading-6 text-red-700">{formError}</p>}
+        {formError && (
+          <p role="alert" className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm leading-6 text-red-700">
+            {formError}
+            {existingAccount && (
+              <> <Link to="/login" className="font-bold underline">Log in</Link></>
+            )}
+          </p>
+        )}
         <div>
         <button
           type="button"

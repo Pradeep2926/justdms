@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, LoaderCircle, ShieldCheck } from "lucide-react";
+import logoUrl from "../assets/justdms-logo.png";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthLayout from "../components/layout/AuthLayout";
 import { supabase } from "../lib/supabase";
@@ -174,7 +176,7 @@ export default function Verify() {
     }
 
     if (token.length !== OTP_LENGTH) {
-      setMessage("Please enter the 6-digit code from your email.");
+      setMessage(`Please enter the ${OTP_LENGTH}-digit code from your email.`);
       return;
     }
 
@@ -230,84 +232,92 @@ export default function Verify() {
 
   if (checkingLink) {
     return (
-      <AuthLayout title="Verify Email" hideHeader>
-        <div className="py-10 text-center">
-          <p className="text-lg font-semibold text-slate-900">Verifying your email...</p>
-          <p className="mt-2 text-sm text-slate-500">One moment while we finish your account.</p>
+      <AuthLayout title="Verify your email" hideHeader compact>
+        <div className="py-10 text-center" role="status">
+          <LoaderCircle className="mx-auto mb-5 h-8 w-8 animate-spin text-brand-600" aria-hidden="true" />
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-950">Verifying your email</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-500">One moment while we finish setting up your account.</p>
         </div>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout title="Verify Email" hideHeader>
-      <form onSubmit={handleVerifyOtp} className="space-y-7 text-center">
-        <div>
-          <h1 className="text-3xl font-black text-slate-950">
-            Hey👋, Lets make you viral🚀
-          </h1>
-          <h2 className="mt-8 text-3xl font-black text-slate-950">Verify Email</h2>
-          <p className="mt-5 text-lg font-medium leading-8 text-slate-500">
-            Verification email is sent to{" "}
-            <span className="text-brand-500">{email || "your email"}</span>
-            <br />
-            Click the verification link, or enter the 6-digit code if your email has one.
-            <br />
-            (Check spam if you haven't received it)
-          </p>
-          {import.meta.env.VITE_USE_LOCAL_AUTH === "true" && (
-            <p className="mt-3 text-sm font-semibold text-amber-700">
-              Local development code: 123456
-            </p>
-          )}
-        </div>
+    <AuthLayout title="Verify your email" hideHeader compact>
+      <form onSubmit={handleVerifyOtp} className="text-center">
+        <Link to="/" aria-label="JustDMs home" className="mb-5 inline-flex items-center justify-center gap-2.5">
+          <img src={logoUrl} alt="" className="h-10 w-10 rounded-xl object-contain" />
+          <span className="text-xl font-bold tracking-tight text-slate-950">JustDMs</span>
+        </Link>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-600">One last step</p>
+        <h1 className="mt-2 text-[28px] font-semibold tracking-tight text-slate-950 sm:text-3xl">Check your inbox</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-500">We sent a verification email to</p>
+        <p className="mt-1 break-all text-sm font-semibold text-slate-900">{email || "your email address"}</p>
+        <p id="verification-help" className="mx-auto mt-4 max-w-xs text-sm leading-6 text-slate-500">
+          Open the link in your email, or enter the {OTP_LENGTH}-digit code below.
+        </p>
 
-        <div className="flex justify-center gap-3" onPaste={handlePaste}>
-          {otp.map((digit, index) => (
-            <input
-              key={index}
-              ref={(node) => {
-                inputRefs.current[index] = node;
-              }}
-              aria-label={`Verification digit ${index + 1}`}
-              inputMode="numeric"
-              maxLength={1}
-              value={digit}
-              onChange={(event) => updateDigit(index, event.target.value)}
-              onKeyDown={(event) => handleKeyDown(index, event)}
-              className="h-14 w-12 rounded-xl border border-slate-300 bg-white text-center text-2xl font-bold text-slate-950 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:h-16 sm:w-14"
-            />
-          ))}
-        </div>
+        {import.meta.env.VITE_USE_LOCAL_AUTH === "true" && (
+          <p className="mt-3 text-xs font-semibold text-amber-700">Local development code: 123456</p>
+        )}
+
+        <fieldset className="mt-5" disabled={verifying}>
+          <legend className="sr-only">Six-digit verification code</legend>
+          <div
+            className="mx-auto grid w-full max-w-sm gap-2 sm:gap-2.5"
+            style={{ gridTemplateColumns: `repeat(${OTP_LENGTH}, minmax(0, 1fr))` }}
+            onPaste={handlePaste}
+          >
+            {otp.map((digit, index) => (
+              <input
+                key={index}
+                ref={(node) => { inputRefs.current[index] = node; }}
+                aria-label={`Verification digit ${index + 1}`}
+                aria-describedby="verification-help"
+                inputMode="numeric"
+                pattern="[0-9]"
+                maxLength={1}
+                value={digit}
+                onChange={(event) => updateDigit(index, event.target.value)}
+                onKeyDown={(event) => handleKeyDown(index, event)}
+                className={`h-14 min-w-0 w-full rounded-xl border text-center text-2xl font-semibold text-slate-950 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100 disabled:opacity-60 ${digit ? "border-brand-200 bg-brand-50/50" : "border-slate-200 bg-slate-50/70 hover:border-slate-300"}`}
+              />
+            ))}
+          </div>
+        </fieldset>
 
         {message && (
-          <p className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-slate-600">
-            {message}
-          </p>
+          <p role="status" aria-live="polite" className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm leading-6 text-slate-700">{message}</p>
         )}
 
         <button
           type="submit"
           disabled={verifying}
-          className="w-full min-h-[56px] rounded-xl bg-brand-500 px-5 text-xl font-bold text-white shadow-lg shadow-brand-500/20 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          {verifying ? "Verifying..." : "Verify"}
+          {verifying ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+          {verifying ? "Verifying..." : "Verify email"}
+          {!verifying && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
         </button>
 
-        <button
-          type="button"
-          onClick={handleResendOtp}
-          disabled={resending}
-          className="text-lg font-semibold text-brand-500 transition hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {resending ? "Sending..." : "Resend verification email"}
-        </button>
+        <div className="mt-5 text-sm leading-6">
+          <p className="text-slate-500">Didn’t get the email? Check your spam folder.</p>
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={resending || verifying}
+            className="mt-1 rounded font-semibold text-brand-600 transition hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {resending ? "Sending email..." : "Resend verification email"}
+          </button>
+        </div>
 
-        <p className="text-lg font-medium text-slate-500">
-          Already have an account?{" "}
-          <Link to="/login" className="text-brand-500 hover:underline">
-            Login
-          </Link>
+        <div className="mt-4 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Keep your verification code private.</span>
+        </div>
+        <p className="mt-4 text-sm text-slate-500">
+          Already verified? <Link to="/login" className="font-semibold text-brand-600 hover:underline">Log in</Link>
         </p>
       </form>
     </AuthLayout>
