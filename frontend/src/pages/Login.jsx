@@ -1,3 +1,4 @@
+import Turnstile, { useCaptcha } from "../components/auth/Turnstile";
 import { GoogleMark, PasswordField } from "../components/auth/AuthControls";
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -6,6 +7,7 @@ import AuthLayout from "../components/layout/AuthLayout";
 
 
 export default function Login() {
+  const captcha = useCaptcha();
   const [formError, setFormError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -16,13 +18,17 @@ export default function Login() {
   async function handleLogin(e) {
     try {
     e.preventDefault();
+    if (!captcha.ready) { setFormError("Please complete the security check."); return; }
     setFormError("");
     setLoading(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
+      options: { captchaToken: captcha.token || undefined },
     });
+
+    captcha.reset();
 
     if (error) {
       if (error.message?.toLowerCase().includes("email not confirmed")) {
@@ -137,7 +143,8 @@ export default function Login() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading || googleLoading} className="w-full btn-primary min-h-12 rounded-xl ">
+        <Turnstile captcha={captcha} />
+        <button type="submit" disabled={loading || googleLoading || !captcha.ready} className="w-full btn-primary min-h-12 rounded-xl ">
           {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>

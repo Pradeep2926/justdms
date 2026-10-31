@@ -1,3 +1,4 @@
+import Turnstile, { useCaptcha } from "../components/auth/Turnstile";
 import metaLogo from "../assets/meta-logo.png";
 import { GoogleMark, PasswordField } from "../components/auth/AuthControls";
 import { useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import { isExistingAccount } from "../lib/signupResult.mjs";
 
 
 export default function Register() {
+  const captcha = useCaptcha();
   const navigate = useNavigate();
 
   const [formError, setFormError] = useState("");
@@ -42,6 +44,7 @@ export default function Register() {
   async function handleRegister(e) {
     try {
     e.preventDefault();
+    if (!captcha.ready) { setFormError("Please complete the security check."); return; }
     setFormError("");
     setExistingAccount(false);
     setLoading(true);
@@ -56,6 +59,7 @@ export default function Register() {
       email: profile.email,
       password,
       options: {
+        captchaToken: captcha.token || undefined,
         emailRedirectTo: `${window.location.origin}/verify`,
         data: {
           first_name: profile.firstName,
@@ -63,6 +67,8 @@ export default function Register() {
         },
       },
     });
+
+    captcha.reset();
 
     if (isExistingAccount(data, error)) {
       localStorage.removeItem("pendingProfile");
@@ -232,9 +238,10 @@ export default function Register() {
           <Link to="/terms" className="text-brand-600 hover:underline">Terms</Link> and <Link to="/privacy" className="text-brand-600 hover:underline">Privacy Policy</Link>.
         </p>
 
+        <Turnstile captcha={captcha} />
         <button
           type="submit"
-          disabled={loading || googleLoading}
+          disabled={loading || googleLoading || !captcha.ready}
           className="w-full min-h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-brand-600 to-violet-600 px-5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {loading ? "Creating Account..." : "Create free account"}

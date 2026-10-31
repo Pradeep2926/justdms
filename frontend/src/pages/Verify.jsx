@@ -1,3 +1,4 @@
+import Turnstile, { useCaptcha } from "../components/auth/Turnstile";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, LoaderCircle, ShieldCheck } from "lucide-react";
 import logoUrl from "../assets/justdms-logo.png";
@@ -8,6 +9,7 @@ import { supabase } from "../lib/supabase";
 const OTP_LENGTH = 6;
 
 export default function Verify() {
+  const captcha = useCaptcha();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inputRefs = useRef([]);
@@ -205,6 +207,7 @@ export default function Verify() {
   }
 
   async function handleResendOtp() {
+    if (!captcha.ready) { setMessage("Please complete the security check to resend your email."); return; }
     if (!email) {
       setMessage("Please enter your email on the signup page again.");
       return;
@@ -217,10 +220,12 @@ export default function Verify() {
       type: "signup",
       email,
       options: {
+        captchaToken: captcha.token || undefined,
         emailRedirectTo: `${window.location.origin}/verify`,
       },
     });
 
+    captcha.reset();
     if (error) {
       setMessage(error.message);
     } else {
@@ -300,12 +305,13 @@ export default function Verify() {
           {!verifying && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
         </button>
 
+        <Turnstile captcha={captcha} />
         <div className="mt-5 text-sm leading-6">
           <p className="text-slate-500">Didn’t get the email? Check your spam folder.</p>
           <button
             type="button"
             onClick={handleResendOtp}
-            disabled={resending || verifying}
+            disabled={resending || verifying || !captcha.ready}
             className="mt-1 rounded font-semibold text-brand-600 transition hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {resending ? "Sending email..." : "Resend verification email"}

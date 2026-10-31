@@ -1,3 +1,4 @@
+import Turnstile, { useCaptcha } from "../components/auth/Turnstile";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail } from "lucide-react";
@@ -5,6 +6,7 @@ import AuthLayout from "../components/layout/AuthLayout";
 import { supabase } from "../lib/supabase";
 
 export default function ForgotPassword() {
+  const captcha = useCaptcha();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -12,14 +14,16 @@ export default function ForgotPassword() {
 
   const sendReset = async (event) => {
     event.preventDefault();
+    if (!captcha.ready) { setMessage("Please complete the security check."); return; }
     setLoading(true);
     setMessage("");
 
     const { error } = await supabase.auth.resetPasswordForEmail(
       email.trim().toLowerCase(),
-      { redirectTo: `${window.location.origin}/reset-password` }
+      { captchaToken: captcha.token || undefined, redirectTo: `${window.location.origin}/reset-password` }
     );
 
+    captcha.reset();
     if (error) {
       setMessage(error.message);
     } else {
@@ -65,7 +69,8 @@ export default function ForgotPassword() {
             />
           </label>
           {message && <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{message}</p>}
-          <button type="submit" disabled={loading} className="btn-primary min-h-12 w-full">
+          <Turnstile captcha={captcha} />
+          <button type="submit" disabled={loading || !captcha.ready} className="btn-primary min-h-12 w-full">
             {loading ? "Sending..." : "Send reset link"}
           </button>
         </form>
