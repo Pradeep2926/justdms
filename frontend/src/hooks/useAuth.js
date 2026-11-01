@@ -1,3 +1,4 @@
+import { trackVerifiedSignup } from "../lib/signupTracking.mjs";
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import api from "../api/api";
@@ -68,6 +69,7 @@ export function useAuth({ redirectOnFail = false } = {}) {
       if (!mounted || !nextUser) return;
       clearTimeout(redirectTimer);
       sessionPromise = Promise.resolve(nextUser);
+      trackVerifiedSignup(nextUser);
       setUser(nextUser);
       setLoading(false);
       syncProfile(nextUser).catch(() => {});

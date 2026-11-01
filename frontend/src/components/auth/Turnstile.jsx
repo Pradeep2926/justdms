@@ -53,5 +53,5 @@ export default function Turnstile({ captcha }) {
     };
   }, [attempt, setToken]);
   if (!enabled) return null;
-  return <div className="my-3 text-left"><div ref={container} />{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}</div>;
+  return <div className="my-3 text-left"><div ref={container} />{!captcha.ready && !error && <p role="status" className="mt-2 text-xs leading-5 text-slate-500">Complete the security check to continue.</p>}{error && <p role="alert" className="mt-2 text-xs text-red-700">{error}</p>}</div>;
 }

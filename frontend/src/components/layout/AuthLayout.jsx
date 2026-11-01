@@ -10,6 +10,7 @@ export default function AuthLayout({ children, title, subtitle, hideHeader = fal
       <div className={`auth-card-stage flex min-w-0 items-center justify-center px-4 sm:px-8 lg:px-10 ${compact ? "py-5" : "py-8 sm:py-12"}`}>
       <main className={`auth-floating-card relative w-full max-w-[470px] rounded-3xl border border-white bg-white/95 ${compact ? "auth-compact p-5 sm:px-8 sm:py-6" : "p-6 sm:p-9"}`}>
         <div aria-hidden="true" className="mx-auto mb-4 h-1 w-10 rounded-full bg-gradient-to-r from-cyan-400 via-brand-600 to-violet-600" />
+        {!hideHeader && <Link to="/" aria-label="JustDMs home" className="mb-4 flex items-center justify-center gap-2 lg:hidden"><img src={logoUrl} alt="" className="h-8 w-8 rounded-lg object-contain" /><span className="text-lg font-bold tracking-tight">JustDMs</span></Link>}
         {!hideHeader && (
           <header className={compact ? "mb-4 text-center" : "mb-7 text-center"}>
             <h1 className="text-[28px] font-semibold tracking-tight sm:text-3xl">{title}</h1>

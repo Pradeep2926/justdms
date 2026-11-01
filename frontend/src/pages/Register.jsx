@@ -1,3 +1,4 @@
+import { trackSignupView, startSignupTracking, rememberSignupUser } from "../lib/signupTracking.mjs";
 import Turnstile, { useCaptcha } from "../components/auth/Turnstile";
 import metaLogo from "../assets/meta-logo.png";
 import { GoogleMark, PasswordField } from "../components/auth/AuthControls";
@@ -22,6 +23,7 @@ export default function Register() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
+    trackSignupView();
     const code = new URLSearchParams(window.location.search).get("ref");
     if (code) localStorage.setItem("justdmsReferralCode", code.trim().toUpperCase());
   }, []);
@@ -55,6 +57,7 @@ export default function Register() {
       email: email.trim().toLowerCase(),
     };
 
+    startSignupTracking("email");
     const { data, error } = await supabase.auth.signUp({
       email: profile.email,
       password,
@@ -85,6 +88,7 @@ export default function Register() {
     }
 
     const user = data.user;
+    rememberSignupUser(user);
     localStorage.setItem("pendingProfile", JSON.stringify(profile));
 
     if (!user) {
@@ -128,6 +132,7 @@ export default function Register() {
     setFormError("");
     setGoogleLoading(true);
 
+    startSignupTracking("google");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

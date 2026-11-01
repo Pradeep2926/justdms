@@ -1,3 +1,4 @@
+import { trackLandingView } from "../lib/signupTracking.mjs";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -63,6 +64,7 @@ const FEATURES = [
 ];
 
 export default function Home() {
+  useEffect(() => { trackLandingView(); }, []);
   const previewOffer = import.meta.env.DEV && new URLSearchParams(window.location.search).get("previewOffer") === "1";
   const [showFoundingOffer, setShowFoundingOffer] = useState(previewOffer);
   useEffect(() => {
@@ -121,8 +123,8 @@ export default function Home() {
         <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-[1.05fr_.95fr] lg:gap-14">
           <div className="text-center lg:text-left">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/80 px-3 py-1.5 text-xs font-semibold text-brand-600"><Zap className="h-3.5 w-3.5" />Instagram automation, made simple</span>
-            <h1 className="mt-6 text-[44px] font-extrabold leading-[1.05] tracking-[-.045em] text-slate-950 sm:text-6xl xl:text-[72px]">You create.<br /><span className="gradient-text">We keep the<br className="hidden lg:block" /> conversation going.</span></h1>
-            <p className="mx-auto mt-6 max-w-md text-base leading-7 text-slate-500 lg:mx-0">Turn “send me the link” into your next connection. Automate Instagram replies, share resources, and get back to what you love.</p>
+            <h1 className="mt-6 text-[44px] font-extrabold leading-[1.05] tracking-[-.045em] text-slate-950 sm:text-6xl xl:text-[72px]">Turn Instagram comments into <span className="gradient-text">automatic DMs.</span></h1>
+            <p className="mx-auto mt-6 max-w-md text-base leading-7 text-slate-500 lg:mx-0">When someone comments “LINK”, JustDMs sends your resource straight to their DMs. Start free and spend less time replying manually.</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4 lg:justify-start"><Link to="/register" className="btn-primary min-h-12 rounded-xl px-7 text-sm">Start for free <ArrowRight className="h-4 w-4" /></Link><a href="#how-it-works" className="inline-flex min-h-12 items-center gap-2 px-2 text-sm font-semibold text-slate-600 hover:text-brand-600">See how it works <span aria-hidden="true">↘</span></a></div>
             <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-slate-500 lg:justify-start">{["Free automation", "No credit card required"].map(text => <span className="inline-flex items-center gap-1.5" key={text}><CheckCircle2 className="h-3.5 w-3.5 text-brand-500" />{text}</span>)}</div>
           </div>
