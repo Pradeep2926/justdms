@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
-import UpgradeReminder from "../subscription/UpgradeReminder";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
@@ -13,7 +12,6 @@ export default function AppLayout({ children, title, subtitle, action, compactHe
 
   return (
     <div className="min-h-screen bg-[linear-gradient(135deg,#ecfeff_0%,#f5f9ff_42%,#f7f2ff_100%)]">
-      <UpgradeReminder user={user} />
       {sidebarOpen && (
         <button
           type="button"

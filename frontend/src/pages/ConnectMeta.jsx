@@ -55,7 +55,7 @@ export default function ConnectMeta() {
   return (
     <AuthLayout
       title="Connect Instagram Account"
-      subtitle="Only a few steps away from automating your DMs"
+      subtitle={switchAccount ? "Securely renew or update your Instagram connection" : "Start your 2 free active automations. No payment required."}
     >
       <div className="text-center space-y-6">
         {(instagramError || connectError) && (
@@ -89,7 +89,7 @@ export default function ConnectMeta() {
           className="flex min-h-14 w-full items-center justify-center gap-3 rounded-lg bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 px-5 text-base font-bold text-white shadow-lg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Instagram className="h-5 w-5" />
-          {loading || connectLoading ? "Connecting..." : "Login with Instagram"}
+          {loading || connectLoading ? "Connecting..." : "Connect Instagram"}
         </button>
 
         <p className="text-xs leading-5 text-slate-500">

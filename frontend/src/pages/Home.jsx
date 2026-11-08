@@ -66,24 +66,23 @@ const FEATURES = [
 export default function Home() {
   useEffect(() => { trackLandingView(); }, []);
   const previewOffer = import.meta.env.DEV && new URLSearchParams(window.location.search).get("previewOffer") === "1";
-  const [showFoundingOffer, setShowFoundingOffer] = useState(previewOffer);
+  const [foundingOfferAvailable, setFoundingOfferAvailable] = useState(previewOffer);
   useEffect(() => {
     let current = true;
     api.get("/billing/founding-offer").then(({ data }) => {
-      if (current) setShowFoundingOffer(previewOffer || data.enabled === true);
+      if (current) setFoundingOfferAvailable(previewOffer || data.enabled === true);
     }).catch(() => {});
     return () => { current = false; };
   }, [previewOffer]);
   const [currency, setCurrency] = useState("INR");
   const [billingCycle, setBillingCycle] = useState("monthly");
   const yearly = billingCycle === "yearly";
-  const introductory = showFoundingOffer && currency === "INR" && !yearly;
+  const introductory = foundingOfferAvailable && currency === "INR" && !yearly;
   const proPrice = currency === "INR" ? (yearly ? "₹1,999" : introductory ? "₹99" : "₹199") : (yearly ? "$49" : "$4.99");
   return (
-    <div className={`landing-page min-h-screen overflow-x-clip bg-white ${showFoundingOffer ? "landing-has-offer" : ""}`}>
+    <div className="landing-page min-h-screen overflow-x-clip bg-white">
       {/* Nav */}
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
-        {showFoundingOffer && <div className="founding-offer-banner bg-slate-950 text-white"><div className="mx-auto flex h-full max-w-6xl items-center justify-center gap-3 px-4 sm:gap-5"><Sparkles aria-hidden="true" className="hidden h-4 w-4 shrink-0 text-violet-300 sm:block" /><div className="min-w-0"><p className="text-[9px] font-semibold uppercase tracking-[.16em] text-violet-300 sm:inline sm:text-[10px]">Founding offer<span className="hidden sm:inline"> · </span></p><p className="text-xs leading-5 text-slate-200 sm:inline sm:text-sm">Pro <strong className="text-white">₹99 for your first month</strong><span className="block text-[10px] text-slate-400 sm:inline sm:text-sm"> · then ₹199/month</span></p></div><Link to="/register" className="inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-white/20 bg-white/10 px-3 text-xs font-semibold transition hover:bg-white/20 sm:px-4">Claim offer <ArrowRight className="h-3.5 w-3.5" /></Link></div></div>}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
           <Link to="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             <img
@@ -126,7 +125,7 @@ export default function Home() {
             <h1 className="mt-6 text-[44px] font-extrabold leading-[1.05] tracking-[-.045em] text-slate-950 sm:text-6xl xl:text-[72px]">Turn Instagram comments into <span className="gradient-text">automatic DMs.</span></h1>
             <p className="mx-auto mt-6 max-w-md text-base leading-7 text-slate-500 lg:mx-0">When someone comments “LINK”, JustDMs sends your resource straight to their DMs. Start free and spend less time replying manually.</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4 lg:justify-start"><Link to="/register" className="btn-primary min-h-12 rounded-xl px-7 text-sm">Start for free <ArrowRight className="h-4 w-4" /></Link><a href="#how-it-works" className="inline-flex min-h-12 items-center gap-2 px-2 text-sm font-semibold text-slate-600 hover:text-brand-600">See how it works <span aria-hidden="true">↘</span></a></div>
-            <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-slate-500 lg:justify-start">{["Free automation", "No credit card required"].map(text => <span className="inline-flex items-center gap-1.5" key={text}><CheckCircle2 className="h-3.5 w-3.5 text-brand-500" />{text}</span>)}</div>
+            <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-slate-500 lg:justify-start">{["2 free active automations", "No credit card required"].map(text => <span className="inline-flex items-center gap-1.5" key={text}><CheckCircle2 className="h-3.5 w-3.5 text-brand-500" />{text}</span>)}</div>
           </div>
           <div className="landing-portrait relative mx-auto w-full max-w-[460px]">
             <div className="relative aspect-[4/4.7] overflow-hidden rounded-[32px] border border-white bg-violet-50"><img src={creatorPortrait} alt="Creator smiling while checking her phone" fetchPriority="high" width="1122" height="1402" className="h-full w-full object-cover" /><div className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-3 py-2 text-[11px] font-semibold text-slate-600 backdrop-blur"><span className="h-1.5 w-1.5 rounded-full bg-brand-500" />A little less busy. A lot more you.</div></div>

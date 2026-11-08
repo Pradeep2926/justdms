@@ -138,13 +138,14 @@ function Hero({ onCreate }) {
   );
 }
 
-function ConnectInstagram({ onConnect }) {
+export function ConnectInstagram({ onConnect }) {
   return (
-    <section className="mx-auto max-w-xl rounded-lg border border-slate-200 bg-white p-10 text-center shadow-sm">
+    <section className="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white px-5 py-8 text-center sm:p-10 shadow-sm">
       <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 via-purple-500 to-orange-400 text-white shadow-lg"><Instagram className="h-8 w-8" /></span>
       <h2 className="mt-5 text-2xl font-bold text-slate-950">Connect your Instagram</h2>
-      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">Link your professional account to load your dashboard and create automations.</p>
-      <button type="button" onClick={onConnect} className="btn-primary mt-6">Connect Instagram <ArrowRight className="h-4 w-4" /></button>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">Connect your professional Instagram account to start your 2 free active automations.</p>
+      <button type="button" onClick={onConnect} className="btn-primary mt-6 w-full justify-center sm:w-auto">Connect Instagram <ArrowRight className="h-4 w-4" /></button>
+      <p className="mt-3 text-xs leading-5 text-slate-500">No payment required. No credit card needed.</p>
     </section>
   );
 }
