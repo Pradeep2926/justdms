@@ -16,6 +16,7 @@ import {
   CalendarCheck,
   Gift,
   ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInstagram } from "../../hooks/useInstagram";
@@ -98,7 +99,8 @@ export default function Sidebar({ mobileOpen = false, onNavigate }) {
             </NavLink>
           )
         )}
-        {isAdmin && <NavLink to="/admin" onClick={onNavigate} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-base font-semibold transition ${isActive ? "bg-violet-50 text-violet-700 ring-1 ring-violet-100" : "text-slate-600 hover:bg-slate-50 hover:text-brand-700"}`}><ShieldCheck className="h-5 w-5" />Admin overview</NavLink>}
+        {isAdmin && <NavLink to="/admin" end onClick={onNavigate} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-base font-semibold transition ${isActive ? "bg-violet-50 text-violet-700 ring-1 ring-violet-100" : "text-slate-600 hover:bg-slate-50 hover:text-brand-700"}`}><ShieldCheck className="h-5 w-5" />Admin overview</NavLink>}
+        {isAdmin && <NavLink to="/admin/tokens" onClick={onNavigate} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-3 text-base font-semibold transition ${isActive ? "bg-violet-50 text-violet-700 ring-1 ring-violet-100" : "text-slate-600 hover:bg-slate-50 hover:text-brand-700"}`}><RefreshCw className="h-5 w-5" />Token monitor</NavLink>}
         <p className="px-3 pb-1 pt-5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Creator tools</p>
         {[
           { to: "/link-in-bio", icon: Link2, label: "Link in Bio" },

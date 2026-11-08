@@ -26,6 +26,7 @@ import PublicBooking from "./pages/PublicBooking";
 import ResourceRedirect from "./pages/ResourceRedirect";
 import ReferEarn from "./pages/ReferEarn";
 import ReferralRedirect from "./pages/ReferralRedirect";
+import AdminTokens from "./pages/AdminTokens";
 import Admin from "./pages/Admin";
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
         {/* App */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/tokens" element={<AdminTokens />} />
         <Route path="/automation" element={<Automation />} /> {/* ✅ */}
         <Route path="/settings" element={<Settings />} />
         <Route path="/billing" element={<Billing />} />
