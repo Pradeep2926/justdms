@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon --ignore data src/server.js",
     "start": "node src/server.js",
-    "test": "node --test src/**/*.test.js"
+    "test": "node --test src/**/*.test.js",
+    "tokens:refresh": "node src/jobs/refreshInstagramTokens.js"
   },
   "keywords": [],
   "author": "",

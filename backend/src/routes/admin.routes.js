@@ -6,6 +6,9 @@ const { loadAdminOverview } = require("../services/admin.service");
 
 const { grantProMonth } = require("../services/adminGrant.service");
 
+const { refreshAccountAsAdmin } = require("../services/adminTokenRefresh.service");
+const axios = require("axios");
+
 const router = express.Router();
 router.use(createRequireAdmin({ getUser: getAuthenticatedUser }));
 
@@ -45,6 +48,18 @@ router.post("/users/:userId/pro-grant", async (req, res) => {
     return res.json(result);
   } catch (error) {
     return res.status(error.status || 503).json({ error: error.message });
+  }
+});
+
+router.post("/instagram/:accountId/refresh-token", async (req, res) => {
+  try {
+    const result = await refreshAccountAsAdmin({ db:supabase, http:axios, admin:req.adminUser, accountId:req.params.accountId, confirmed:req.body?.confirmed });
+    const inFlight = pending;
+    snapshot = null; snapshotAt = 0;
+    if (inFlight) inFlight.finally(() => { snapshot = null; snapshotAt = 0; }).catch(() => {});
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.status || 503).json({ error:error.status ? error.message : "Unable to refresh this token. Check renewal monitoring." });
   }
 });
 

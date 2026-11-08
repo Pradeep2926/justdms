@@ -4,6 +4,8 @@ const {
   isActivePaidSubscription,
 } = require("../lib/automationAccess");
 
+const { refreshHealth, loadTokenRefreshMonitor } = require("./tokenRefreshMonitor.service");
+
 const DAY = 24 * 60 * 60 * 1000;
 const { recoveredOpeningState } = require("../lib/commentProcessing");
 const PAGE_SIZE = 500;
@@ -16,7 +18,7 @@ function tokenHealth(account, now = Date.now()) {
   let status = "unknown";
   if (Number.isFinite(expiry) && expiry <= now) status = "expired";
   else if (["expired", "invalid", "revoked", "disconnected", "reconnect_required"].includes(stored)) status = "reconnect_required";
-  else if (Number.isFinite(expiry)) status = expiry - now <= 14 * DAY ? "expiring_soon" : "active";
+  else if (Number.isFinite(expiry)) status = expiry - now <= 15 * DAY ? "expiring_soon" : "active";
   // A stored 'active' flag alone does not establish that a token is still valid.
   return { status, expiresAt, daysRemaining: Number.isFinite(expiry) ? Math.ceil((expiry - now) / DAY) : null };
 }
@@ -64,7 +66,7 @@ function buildAdminOverview({ authUsers, profiles, accounts, subscriptions, auto
   for (const account of accounts) {
     const user = ensureUser(account.user_id, account.user_email);
     // Explicit response fields: credentials and raw provider payloads never leave the server.
-    user.accounts.push({ id: account.id, username: account.username || account.instagram_username, provider: account.auth_provider, token: tokenHealth(account, now), storedTokenStatus: account.token_status, connectedAt: account.connected_at, lastSyncAt: account.last_sync });
+    user.accounts.push({ id: account.id, username: account.username || account.instagram_username, provider: account.auth_provider, token: tokenHealth(account, now), refresh: refreshHealth(account, now), storedTokenStatus: account.token_status, connectedAt: account.connected_at, lastSyncAt: account.last_sync });
   }
   for (const subscription of subscriptions) {
     const user = ensureUser(subscription.user_id, subscription.user_email);
@@ -112,11 +114,11 @@ function buildAdminOverview({ authUsers, profiles, accounts, subscriptions, auto
     ...user,
     isPro: user.subscription?.isPro || false,
     isNew: Number.isFinite(Date.parse(user.createdAt)) && Date.parse(user.createdAt) >= now - 7 * DAY,
-    needsAttention: user.accounts.some(a => tokenNeedsAttention(a.token)) || user.automations.some(a => a.health === "needs_attention"),
+    needsAttention: user.accounts.some(a => tokenNeedsAttention(a.token) || ["retry_pending","refresh_failed"].includes(a.refresh.state)) || user.automations.some(a => a.health === "needs_attention"),
   })).sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0) || a.email.localeCompare(b.email));
   return {
     generatedAt: new Date(now).toISOString(), activitySince: new Date(now - 2 * DAY).toISOString(),
-    summary: { users: authUsers.length, legacyUsers: users.filter(u => !u.registered).length, newUsers: users.filter(u => u.isNew).length, proUsers: users.filter(u => u.isPro).length, paidProUsers: users.filter(u => u.subscription?.paidPro).length, activeAutomations: automations.filter(a => a.is_active).length, totalAutomations: automations.length, tokenWarnings: users.flatMap(u => u.accounts).filter(a => tokenNeedsAttention(a.token)).length, failedInteractions: activity.failed, failedEvents: activity.failedEvents, activity },
+    summary: { users: authUsers.length, legacyUsers: users.filter(u => !u.registered).length, newUsers: users.filter(u => u.isNew).length, proUsers: users.filter(u => u.isPro).length, paidProUsers: users.filter(u => u.subscription?.paidPro).length, activeAutomations: automations.filter(a => a.is_active).length, totalAutomations: automations.length, tokenWarnings: users.flatMap(u => u.accounts).filter(a => tokenNeedsAttention(a.token) || ["retry_pending","refresh_failed"].includes(a.refresh.state)).length, failedInteractions: activity.failed, failedEvents: activity.failedEvents, activity },
     users,
   };
 }
@@ -148,13 +150,15 @@ async function loadAdminOverview(db, now = Date.now()) {
   const since = new Date(now - 2 * DAY).toISOString();
   const [profiles, accounts, subscriptions, automations, interactions, events] = await Promise.all([
     readAll(db, "ProfileUsers", "id,Email,FirstName,LastName"),
-    readAll(db, "instagram_accounts", "id,user_id,user_email,username,instagram_username,auth_provider,token_status,token_expires_at,expires_at,connected_at,last_sync"),
+    readAll(db, "instagram_accounts", "id,user_id,user_email,username,instagram_username,auth_provider,token_status,token_expires_at,expires_at,connected_at,last_sync,token_refreshed_at,token_refresh_checked_at,token_refresh_status,token_refresh_error"),
     readAll(db, "subscriptions", "id,user_id,user_email,status,billing_cycle,ends_at,current_end,referral_access_end,cancel_at_period_end,updated_at"),
     readAll(db, "automations", "id,user_id,user_email,name,is_active,created_at,trigger_value,follow_required"),
     readAll(db, "automation_interactions", "id,automation_id,current_step,resource_delivery_status,opening_dm_sent_at,resource_delivered_at,created_at,updated_at", "updated_at", since),
     readAll(db, "automation_events", "id,automation_id,event_type,status,error_message,created_at", "created_at", since),
   ]);
-  return buildAdminOverview({ authUsers, profiles, accounts, subscriptions, automations, interactions, events }, now);
+  const overview = buildAdminOverview({ authUsers, profiles, accounts, subscriptions, automations, interactions, events }, now);
+  overview.tokenRefresh = await loadTokenRefreshMonitor(db, accounts, now);
+  return overview;
 }
 
 module.exports = { tokenHealth, buildAdminOverview, loadAdminOverview };

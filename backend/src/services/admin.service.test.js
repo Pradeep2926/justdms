@@ -69,3 +69,12 @@ test("data load failures are not silently presented as a healthy empty dashboard
   await assert.rejects(loadAdminOverview({}, now), /requires Supabase/);
   await assert.rejects(loadAdminOverview({ auth: { admin: { listUsers: async () => ({ error: { message: "unavailable" } }) } } }, now), /Unable to load registered users/);
 });
+
+test('admin sees refresh failure attention without exposing refresh payloads or tokens',()=>{
+ const result=buildAdminOverview({authUsers:[],profiles:[],subscriptions:[],automations:[],interactions:[],events:[],accounts:[{id:'ig',user_email:'fixture@example.invalid',auth_provider:'instagram',token_status:'active',token_expires_at:'2026-12-25',token_refresh_status:'refresh_failed',token_refresh_checked_at:'2026-10-21',token_refresh_error:'PRIVATE_PROVIDER_PAYLOAD',access_token:'PRIVATE_TOKEN'}]},now);
+ assert.equal(result.users[0].needsAttention,true);
+ assert.equal(result.summary.tokenWarnings,1);
+ assert.equal(result.users[0].accounts[0].refresh.state,'refresh_failed');
+ assert.equal(result.users[0].accounts[0].refresh.lastAttemptAt,'2026-10-21');
+ assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
+});
