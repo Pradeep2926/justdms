@@ -4,6 +4,15 @@ import { supabase } from "../lib/supabase";
 import api from "../api/api";
 
 let sessionPromise;
+const welcomeRequests = new Set();
+const welcomeCompleted = new Set();
+function requestWelcome(user) {
+  if (!user?.id || !user.email_confirmed_at || welcomeRequests.has(user.id) || welcomeCompleted.has(user.id)) return;
+  welcomeRequests.add(user.id);
+  api.post("/onboarding/welcome").then(({ data }) => {
+    if (["sent", "skipped"].includes(data.status)) welcomeCompleted.add(user.id);
+  }).catch(() => {}).finally(() => welcomeRequests.delete(user.id));
+}
 
 function getCurrentUser() {
   if (!sessionPromise) {
@@ -74,6 +83,7 @@ export function useAuth({ redirectOnFail = false } = {}) {
       setLoading(false);
       syncProfile(nextUser).catch(() => {});
       syncReferral().catch(() => {});
+      requestWelcome(nextUser);
     };
 
     const authListener = supabase.auth.onAuthStateChange
