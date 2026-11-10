@@ -57,6 +57,7 @@ app.use(
  * =============================
  */
 app.use("/auth", authRoutes);
+app.use("/onboarding", require("./routes/onboarding.routes"));
 app.use("/instagram", instagramRoutes);
 app.use("/automation", automationRoutes);
 app.use("/webhook", webhookRoutes);
