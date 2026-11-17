@@ -3,6 +3,7 @@ import { Activity, AlertCircle, ArrowRight, ArrowUpRight, CheckCircle2, ChevronL
 import AppLayout from "../components/layout/AppLayout";
 import { Link } from "react-router-dom";
 import AdminUserDetails from "../components/dashboard/AdminUserDetails";
+import WebhookCleanupMonitor from "../components/dashboard/WebhookCleanupMonitor";
 import { formatAdminDate as date, HealthPill, initials, PlanPill, subscriptionLabel, TokenPill, tokenRemaining, userActivity } from "../components/dashboard/AdminUI";
 import { useAuth } from "../hooks/useAuth";
 import api from "../api/api";
@@ -144,6 +145,7 @@ export default function Admin() {
           {!visible.length && <div className="px-5 py-12 text-center"><Search className="mx-auto h-6 w-6 text-slate-300" /><p className="mt-3 text-sm font-semibold text-slate-700">No matching users</p><p className="mt-1 text-xs text-slate-500">Try a different name, email or filter.</p><button onClick={() => { setQuery(""); changeFilter("all"); }} className="mt-4 text-xs font-semibold text-violet-600">Clear filters</button></div>}
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 sm:px-5"><p className="text-[11px] text-slate-500">{filtered.length ? `${(currentPage - 1) * 12 + 1}–${Math.min(currentPage * 12, filtered.length)} of ${filtered.length} records` : "0 records"}{summary.legacyUsers ? ` · ${summary.legacyUsers} legacy` : ""}</p><div className="flex items-center gap-1"><button aria-label="Previous page" disabled={currentPage <= 1} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30" onClick={() => setPage(currentPage - 1)}><ChevronLeft className="h-4 w-4" /></button><span className="px-2 text-xs text-slate-500">{currentPage} / {pageCount}</span><button aria-label="Next page" disabled={currentPage >= pageCount} className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30" onClick={() => setPage(currentPage + 1)}><ChevronRight className="h-4 w-4" /></button></div></footer>
         </section>
+        <WebhookCleanupMonitor monitor={overview.webhookCleanup} />
         <p className="pb-2 text-center text-[10px] leading-5 text-slate-400">All times in IST. Saved token and billing status; no live provider checks. Snapshots may be reused for up to 30 seconds.</p>
       </>}
       {selected && <AdminUserDetails key={selected.id} user={selected} tokenRefreshEnabled={overview.tokenRefresh?.applyEnabled === true} onGranted={refresh} onClose={() => setSelectedId(null)} />}

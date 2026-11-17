@@ -5,6 +5,7 @@ const {
 } = require("../lib/automationAccess");
 
 const { refreshHealth, loadTokenRefreshMonitor } = require("./tokenRefreshMonitor.service");
+const { loadWebhookCleanupMonitor } = require("./webhookCleanupMonitor.service");
 
 const DAY = 24 * 60 * 60 * 1000;
 const { recoveredOpeningState } = require("../lib/commentProcessing");
@@ -158,6 +159,8 @@ async function loadAdminOverview(db, now = Date.now()) {
   ]);
   const overview = buildAdminOverview({ authUsers, profiles, accounts, subscriptions, automations, interactions, events }, now);
   overview.tokenRefresh = await loadTokenRefreshMonitor(db, accounts, now);
+  // Maintenance telemetry must never prevent the admin page loading.
+  overview.webhookCleanup = await loadWebhookCleanupMonitor(db, now);
   return overview;
 }
 
